@@ -2,12 +2,37 @@ import DynamicTextInput from "@/components/TextInput";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Image, ScrollView, StyleSheet, View } from "react-native";
-import { Button, Divider, IconButton, List, Text } from "react-native-paper";
+import { Button, Divider, IconButton, List, Text, ActivityIndicator } from "react-native-paper";
+import { useFetchTransactions } from "@/services/queries/transactions";
 
 export default function BuyAirtime() {
   const router = useRouter();
   const [showInput, setShowInput] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
+
+  // Fetch recent airtime transactions
+  const { transactions: recentTransactions, loading: transactionsLoading } = useFetchTransactions({
+    transaction_type: 'AIRTIME',
+    limit: 2,
+    page: 1,
+  });
+
+  // Function to get network image based on network name
+  const getNetworkImage = (network: string) => {
+    const networkName = network?.toLowerCase();
+    switch (networkName) {
+      case 'mtn':
+        return require("@/assets/images/mtn.png");
+      case 'airtel':
+        return require("@/assets/images/airtel.png");
+      case 'glo':
+        return require("@/assets/images/glo.png");
+      case '9mobile':
+        return require("@/assets/images/9mobile.png");
+      default:
+        return require("@/assets/images/mtn.png"); // fallback
+    }
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -70,31 +95,54 @@ export default function BuyAirtime() {
       <Divider style={styles.divider} />
       <Text style={styles.sectionTitle}>RECENT PURCHASES</Text>
 
-      <View style={styles.purchaseItem}>
-        <View style={styles.purchaseLeft}>
-          <Image source={require("@/assets/images/mtn.png")} style={styles.icon} />
-          <View style={styles.purchaseText}>
-            <Text style={styles.bold}>MTN - 2348067147306</Text>
-            <Text style={styles.subText}>₦35,000 • Mar 18 at 12:34 PM</Text>
-          </View>
+      {transactionsLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color="#1E3A8A" />
+          <Text style={styles.loadingText}>Loading recent purchases...</Text>
         </View>
-        <Button mode="contained-tonal" style={styles.buyAgainBtn}>
-          Buy Again
-        </Button>
-      </View>
-
-      <View style={styles.purchaseItem}>
-        <View style={styles.purchaseLeft}>
-          <Image source={require("@/assets/images/airtel.png")} style={styles.icon} />
-          <View style={styles.purchaseText}>
-            <Text style={styles.bold}>Airtel - 2348025550113</Text>
-            <Text style={styles.subText}>₦35,000 • Mar 18 at 12:34 PM</Text>
+      ) : recentTransactions?.data && recentTransactions.data.length > 0 ? (
+        recentTransactions.data.map((transaction, index) => (
+          <View key={transaction.id || index} style={styles.purchaseItem}>
+            <View style={styles.purchaseLeft}>
+              <Image source={getNetworkImage(transaction.network)} style={styles.icon} />
+              <View style={styles.purchaseText}>
+                <Text style={styles.bold}>
+                  {transaction.network} - {transaction.phone?.replace(/(\d{3})(\d{4})(\d{4})/, '$1$2$3')}
+                </Text>
+                <Text style={styles.subText}>
+                  ₦{Number(transaction.amount).toLocaleString()} • {new Date(transaction.created_at).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                  })}
+                </Text>
+              </View>
+            </View>
+            <Button 
+              mode="contained-tonal" 
+              style={styles.buyAgainBtn}
+              onPress={() => router.push({
+                pathname: '/(tabs)/dashboard/buy_airtime',
+                params: {
+                  phoneNumber: transaction.phone,
+                  amount: transaction.amount.toString(),
+                  network: transaction.network?.toLowerCase(),
+                  buyAgain: 'true'
+                }
+              })}
+            >
+              Buy Again
+            </Button>
           </View>
+        ))
+      ) : (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateText}>No recent airtime purchases</Text>
+          <Text style={styles.emptyStateSubText}>Your purchases will appear here</Text>
         </View>
-        <Button mode="contained-tonal" style={styles.buyAgainBtn}>
-          Buy Again
-        </Button>
-      </View>
+      )}
       {showInput && (
         <Button
           mode="contained"
@@ -177,5 +225,32 @@ const styles = StyleSheet.create({
     padding: 10,
     marginVertical: 10,
     fontSize: 16,
+  },
+  loadingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: "#64748b",
+    marginLeft: 8,
+    fontFamily: "InstrumentSans",
+  },
+  emptyState: {
+    alignItems: "center",
+    padding: 20,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: "#374151",
+    fontFamily: "InstrumentSansSemiBold",
+    marginBottom: 4,
+  },
+  emptyStateSubText: {
+    fontSize: 14,
+    color: "#64748b",
+    fontFamily: "InstrumentSans",
   },
 });

@@ -149,7 +149,8 @@ const styles = StyleSheet.create({
         paddingLeft: 20,
         paddingRight: 60,
         width: '100%',
-        paddingVertical: 20,
+        paddingTop: 50,
+        paddingBottom: 20,
         backgroundColor: '#fff',
     },
     profileSection: {

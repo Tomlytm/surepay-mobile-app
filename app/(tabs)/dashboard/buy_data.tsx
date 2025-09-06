@@ -1,5 +1,5 @@
 import * as Contacts from "expo-contacts";
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
     FlatList,
     Image,
@@ -19,18 +19,18 @@ import {
     ActivityIndicator,
     Button,
     Checkbox,
+    Chip,
     RadioButton,
-    TextInput,
-    Chip
+    TextInput
 } from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
 import MonthYearPicker from "@/components/DateField";
 import { useValidatePhoneNumber } from "@/services/queries/extra/utility";
-import { useDataPurchase, useSubmitPin } from "@/services/queries/transactions";
 import { useFetchPlans } from "@/services/queries/plans"; // Import the new hook
+import { DataPurchasePayload, useDataPurchase, useFetchTransactions, useSubmitPin } from "@/services/queries/transactions";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import ReactNativeModal from "react-native-modal";
 import Toast from "react-native-toast-message";
@@ -44,11 +44,25 @@ interface DataPlan {
 }
 
 export default function BuyData() {
-    const [phoneNumber, setPhoneNumber] = useState("0912146818");
-    const [amount, setAmount] = useState<number | null>(null);
+    const params = useLocalSearchParams();
+    
+    const [phoneNumber, setPhoneNumber] = useState(params.phoneNumber as string || "0912146818");
+    const [amount, setAmount] = useState<number | null>(params.amount ? Number(params.amount) : null);
     const [saveBeneficiary, setSaveBeneficiary] = useState(false);
-    const [network, setNetwork] = useState("mtn");
-    const [net, setNet] = useState("mtn");
+    const [network, setNetwork] = useState((params.network as string)?.toLowerCase() || "mtn");
+    const [net, setNet] = useState(() => {
+        if (params.network) {
+            const networkParam = (params.network as string).toLowerCase();
+            switch (networkParam) {
+                case "mtn": return "MTN";
+                case "9mobile": return "9Mobile";
+                case "airtel": return "Airtel";
+                case "glo": return "Glo";
+                default: return "MTN";
+            }
+        }
+        return "MTN";
+    });
     const [isPackageModalVisible, setPackageModalVisible] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState("card");
     const [contacts, setContacts] = useState<Contacts.Contact[]>([]);
@@ -181,6 +195,13 @@ export default function BuyData() {
         return "?";
     };
 
+    // Fetch recent data transactions
+    const { transactions: recentTransactions, loading: transactionsLoading } = useFetchTransactions({
+        transaction_type: 'DATA',
+        limit: 3,
+        page: 1,
+    });
+
     useEffect(() => {
         if (modalManuallyClosed && requirePin) {
             Toast.show({
@@ -240,11 +261,14 @@ setNet(newNet)
     // Refetch plans when network changes
     useEffect(() => {
         if (network) {
-            setSelectedPackage(null);
-            setAmount(null);
+            if (!params.buyAgain) {
+                // Only clear package and amount if not from buy again
+                setSelectedPackage(null);
+                setAmount(null);
+            }
             refetchPlans();
         }
-    }, [network]);
+    }, [network, params.buyAgain]);
 
     const renderCardLogo = () => {
         switch (cardType) {
@@ -325,7 +349,7 @@ setNet(newNet)
             },
         };
 
-        purchaseData(payload);
+        purchaseData(payload as DataPurchasePayload);
     }
 
     return (
@@ -425,7 +449,7 @@ setNet(newNet)
                                 },
                             ]}
                             contentStyle={{
-                                paddingVertical: 10,
+                                paddingVertical: Platform.OS === 'android' ? 6 : 10,
                                 flexDirection: "column",
                                 justifyContent: "center",
                                 alignItems: "center",
@@ -433,7 +457,7 @@ setNet(newNet)
                             labelStyle={{
                                 color: network === item.label ? "#353535" : "#757575",
                                 fontFamily: "InstrumentSansSemiBold",
-                                fontSize: 14,
+                                fontSize: Platform.OS === 'android' ? 12 : 14,
                                 textTransform: item.label !== "mtn" ? "capitalize" : "uppercase",
                                 width: "100%",
                             }}
@@ -466,7 +490,7 @@ setNet(newNet)
                 {plansError && (
                     <View style={styles.errorRow}>
                         <Text style={styles.errorText}>Failed to load plans</Text>
-                        <TouchableOpacity onPress={refetchPlans}>
+                        <TouchableOpacity onPress={() => refetchPlans()}>
                             <Text style={styles.retryText}>Retry</Text>
                         </TouchableOpacity>
                     </View>
@@ -625,7 +649,7 @@ setNet(newNet)
                     ) : plansError ? (
                         <View style={styles.centerContainer}>
                             <Text style={styles.errorText}>Failed to load plans</Text>
-                            <TouchableOpacity onPress={refetchPlans} style={styles.retryButton}>
+                            <TouchableOpacity onPress={() => refetchPlans()} style={styles.retryButton}>
                                 <Text style={styles.retryText}>Retry</Text>
                             </TouchableOpacity>
                         </View>
@@ -1179,12 +1203,12 @@ const styles = StyleSheet.create({
         marginRight: 10,
         borderRadius: 15,
         borderColor: "transparent",
-        width: 80,
+        width: Platform.OS === 'android' ? 65 : 80,
         backgroundColor: "transparent",
     },
     networkIcon: {
-        width: 24,
-        height: 24,
+        width: Platform.OS === 'android' ? 20 : 24,
+        height: Platform.OS === 'android' ? 20 : 24,
         marginLeft: -27,
         borderRadius: 5,
     },

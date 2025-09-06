@@ -10,6 +10,7 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { FontAwesome } from '@expo/vector-icons';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { IconButton } from 'react-native-paper';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -43,135 +44,137 @@ export default function RootLayout() {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen
-            name="index"
-            options={{
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen
-            name="login"
-            options={{
-              headerShown: true,
-              headerTitle: '',
-              headerStyle: { backgroundColor: '#E7F0FA' },
-              headerTintColor: 'black',
-              headerTitleStyle: { fontWeight: 'bold' },
-              headerLeft: () => (
-                <IconButton
-                  icon="arrow-left"
-                  size={24}
-                  onPress={() => router.push('/')}
-                  style={[styles.backButton, styles.iconContainer]}
-                />
-              ),
-            }}
-          />
-          <Stack.Screen
-            name="forgot-password"
-            options={{
-              headerShown: true,
-              headerTitle: '',
-              headerStyle: { backgroundColor: '#E7F0FA' },
-              headerTintColor: 'black',
-              headerTitleStyle: { fontWeight: 'bold' },
-              headerLeft: () => (
-                <IconButton
-                  icon="arrow-left"
-                  size={24}
-                  onPress={() => navigation.goBack()}
-                  style={[styles.backButton, styles.iconContainer]}
-                />
-              ),
-            }}
-          />
-          <Stack.Screen
-            name="signup"
-            options={{
-              headerShown: true,
-              headerTitle: '',
-              headerStyle: { backgroundColor: '#E7F0FA' },
-              headerTintColor: 'black',
-              headerTitleStyle: { fontWeight: 'bold' },
-              headerLeft: () => (
-                <IconButton
-                  icon="arrow-left"
-                  size={24}
-                  onPress={() => navigation.goBack()}
-                  style={[styles.backButton, styles.iconContainer]}
-                />
-              ),
-            }}
-          />
-          
-          <Stack.Screen
-            name="steps"
-            options={{
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen
-            name="verification"
-            options={{
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen
-            name="reset-password"
-            options={{
-              headerShown: true,
-              headerTitle: '',
-              headerStyle: { backgroundColor: '#E7F0FA' },
-              headerTintColor: 'black',
-              headerTitleStyle: { fontWeight: 'bold' },
-              headerLeft: () => (
-                <IconButton
-                  icon="arrow-left"
-                  size={24}
-                  onPress={() => navigation.goBack()}
-                  style={[styles.backButton, styles.iconContainer]}
-                />
-              ),
-            }}
-          />
-          <Stack.Screen
-            name="change-password"
-            options={{
-              headerShown: true,
-              headerTitle: '',
-              headerStyle: { backgroundColor: '#E7F0FA' },
-              headerTintColor: 'black',
-              headerTitleStyle: { fontWeight: 'bold' },
-              headerLeft: () => (
-                <IconButton
-                  icon="arrow-left"
-                  size={24}
-                  onPress={() => navigation.goBack()}
-                  style={[styles.backButton, styles.iconContainer]}
-                />
-              ),
-            }}
-          />
-          <Stack.Screen
-            name="(tabs)"
-            options={{
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen
-            name="+not-found"
-            options={{
-              headerShown: false,
-            }}
-          />
-        </Stack>
-        <Toast />
-        <StatusBar style="auto" />
-      </ThemeProvider>
-    </QueryClientProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <Stack>
+            <Stack.Screen
+              name="index"
+              options={{
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="login"
+              options={{
+                headerShown: true,
+                headerTitle: '',
+                headerStyle: { backgroundColor: '#E7F0FA' },
+                headerTintColor: 'black',
+                headerTitleStyle: { fontWeight: 'bold' },
+                headerLeft: () => (
+                  <IconButton
+                    icon="arrow-left"
+                    size={24}
+                    onPress={() => router.push('/')}
+                    style={[styles.backButton, styles.iconContainer]}
+                  />
+                ),
+              }}
+            />
+            <Stack.Screen
+              name="forgot-password"
+              options={{
+                headerShown: true,
+                headerTitle: '',
+                headerStyle: { backgroundColor: '#E7F0FA' },
+                headerTintColor: 'black',
+                headerTitleStyle: { fontWeight: 'bold' },
+                headerLeft: () => (
+                  <IconButton
+                    icon="arrow-left"
+                    size={24}
+                    onPress={() => navigation.goBack()}
+                    style={[styles.backButton, styles.iconContainer]}
+                  />
+                ),
+              }}
+            />
+            <Stack.Screen
+              name="signup"
+              options={{
+                headerShown: true,
+                headerTitle: '',
+                headerStyle: { backgroundColor: '#E7F0FA' },
+                headerTintColor: 'black',
+                headerTitleStyle: { fontWeight: 'bold' },
+                headerLeft: () => (
+                  <IconButton
+                    icon="arrow-left"
+                    size={24}
+                    onPress={() => navigation.goBack()}
+                    style={[styles.backButton, styles.iconContainer]}
+                  />
+                ),
+              }}
+            />
+            
+            <Stack.Screen
+              name="steps"
+              options={{
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="verification"
+              options={{
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="reset-password"
+              options={{
+                headerShown: true,
+                headerTitle: '',
+                headerStyle: { backgroundColor: '#E7F0FA' },
+                headerTintColor: 'black',
+                headerTitleStyle: { fontWeight: 'bold' },
+                headerLeft: () => (
+                  <IconButton
+                    icon="arrow-left"
+                    size={24}
+                    onPress={() => navigation.goBack()}
+                    style={[styles.backButton, styles.iconContainer]}
+                  />
+                ),
+              }}
+            />
+            <Stack.Screen
+              name="change-password"
+              options={{
+                headerShown: true,
+                headerTitle: '',
+                headerStyle: { backgroundColor: '#E7F0FA' },
+                headerTintColor: 'black',
+                headerTitleStyle: { fontWeight: 'bold' },
+                headerLeft: () => (
+                  <IconButton
+                    icon="arrow-left"
+                    size={24}
+                    onPress={() => navigation.goBack()}
+                    style={[styles.backButton, styles.iconContainer]}
+                  />
+                ),
+              }}
+            />
+            <Stack.Screen
+              name="(tabs)"
+              options={{
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="+not-found"
+              options={{
+                headerShown: false,
+              }}
+            />
+          </Stack>
+          <Toast />
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }
 

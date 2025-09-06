@@ -3,8 +3,10 @@ import { useSearchParams } from "expo-router/build/hooks";
 import React from "react";
 import { View, StyleSheet } from "react-native";
 import { Text, Button, Card, Divider, IconButton } from "react-native-paper";
+import { useRouter } from "expo-router";
 
 export default function Receipt() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const id = searchParams.get("id");
     const title = searchParams.get("title") || "";
@@ -23,7 +25,7 @@ export default function Receipt() {
             <IconButton
                 icon="arrow-left"
                 size={24}
-                onPress={() => { }}
+                onPress={() => router.back()}
             />
 
             <Text style={styles.title}>Transaction Receipt</Text>
@@ -108,7 +110,7 @@ const styles = StyleSheet.create({
     },
     card: {
         borderRadius: 12,
-        elevation: 2,
+        // elevation: 2,
         marginBottom: 24,
     },
     amountLabel: {

@@ -7,6 +7,7 @@ import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Keyboard, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from "react-native";
 import { Button } from "react-native-paper";
+import Toast from "react-native-toast-message";
 export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("thesuburbanbarber@gmail.com");
@@ -34,7 +35,7 @@ const handleSubmit = async () => {
 
     // 3. Make login request
     const response = await axios.post(
-      "http://203.161.56.177:3000/api/v1/auth/login",
+      "https://uatapi.sure-pay.org/api/v1/auth/login",
       loginData,
       {
         headers: {
@@ -68,6 +69,11 @@ console.log("Decrypted AES Key:", decryptedAesKey);
     router.push("/(tabs)/dashboard");
   } catch (error: any) {
     console.log("Login error:", error?.response.data.message  || error);
+    Toast.show({
+      type: "error",
+      text1: "Login Failed",
+      text2: error?.response.data.message  || error || "Please try again later.",
+    });
   } finally {
     setLoading(false);
   }
@@ -98,9 +104,11 @@ console.log("Decrypted AES Key:", decryptedAesKey);
             >
             {loading ? 'Loading...': 'Login'}
             </Button>
+            <TouchableOpacity onPress={() => router.push("/signup")}>
           <Text style={styles.createAccount}>
             Don’t have an account? <Text style={styles.linkText}>Create an Account</Text>
           </Text>
+        </TouchableOpacity>
         </View>
       </View>
     </TouchableWithoutFeedback>

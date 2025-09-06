@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { TextInput } from 'react-native-paper';
 
 interface DynamicTextInputProps {
   label: any;
   value: string;
   onChangeText?: (text: string) => void;
-  inputType?: 'text' | 'password'; // Type to toggle between text and password
+  inputType?: 'text' | 'password' | 'email' | 'phone' | 'numeric'; // Type to toggle between text and password
   secureTextEntry?: boolean; // Allow manual control of secure text entry
   themeColors?: {
     primary: string;

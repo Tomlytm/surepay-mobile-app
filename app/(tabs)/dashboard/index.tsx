@@ -1,14 +1,21 @@
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFetchTransactions } from '@/services/queries/transactions';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function HomeScreenn() {
   const [user, setUser] = useState<any>(null);
   const router = useRouter();
   const { transactions: trx, loading, error, refetch } = useFetchTransactions();
+
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const headerSlideAnim = useRef(new Animated.Value(-30)).current;
+  const actionsScaleAnim = useRef(new Animated.Value(0.8)).current;
+  const bannerSlideAnim = useRef(new Animated.Value(30)).current;
 
   const menuItems = [
     {
@@ -83,11 +90,55 @@ export default function HomeScreenn() {
       }
     };
     fetchUser();
+
+    // Start animations
+    const animateIn = () => {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(headerSlideAnim, {
+          toValue: 0,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+        Animated.spring(actionsScaleAnim, {
+          toValue: 1,
+          tension: 100,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bannerSlideAnim, {
+          toValue: 0,
+          duration: 800,
+          delay: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    };
+
+    // Small delay to make the animation more noticeable
+    setTimeout(animateIn, 100);
   }, []);
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.header}>
+      <Animated.View 
+        style={[
+          styles.header,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: headerSlideAnim }]
+          }
+        ]}
+      >
         <View>
           <Text style={styles.greeting}>
             {(() => {
@@ -103,15 +154,31 @@ export default function HomeScreenn() {
         <TouchableOpacity onPress={()=>refetch()}>
           <Ionicons name="mail-outline" size={40} color="#000" />
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
-      <View style={styles.actions}>
+      <Animated.View 
+        style={[
+          styles.actions,
+          {
+            opacity: fadeAnim,
+            transform: [{ scale: actionsScaleAnim }, { translateY: slideAnim }]
+          }
+        ]}
+      >
         {menuItems?.map((item) => (
           <ActionButton key={item.id} label={item.title} icon={item.icon} onPress={item.onPress}/>
         ))}
-      </View>
+      </Animated.View>
 
-      <View style={styles.banner}>
+      <Animated.View 
+        style={[
+          styles.banner,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: bannerSlideAnim }]
+          }
+        ]}
+      >
         <Text style={styles.bannerText}>
           <Text>Earn up to </Text>
           <Text>15% commission</Text>
@@ -127,9 +194,17 @@ export default function HomeScreenn() {
           source={require("@/assets/images/bannerImage.png")}
           style={styles.bannerImage}
         />
-      </View>
+      </Animated.View>
 
-      <View style={styles.recentSection}>
+      <Animated.View 
+        style={[
+          styles.recentSection,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }]
+          }
+        ]}
+      >
         <Text style={styles.recentTitle}>RECENT TRANSACTIONS</Text>
         {loading && (
           <View style={styles.loadingContainer}>
@@ -145,56 +220,95 @@ export default function HomeScreenn() {
             </TouchableOpacity>
           </View>
         )}
-      </View>
+      </Animated.View>
 
       {!loading && !error && recentTransactions.length === 0 && (
-        <View style={styles.emptyState}>
+        <Animated.View 
+          style={[
+            styles.emptyState,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }, { scale: actionsScaleAnim }]
+            }
+          ]}
+        >
           <Ionicons name="receipt-outline" size={48} color="#959595" />
           <Text style={styles.emptyStateText}>No recent transactions</Text>
           <Text style={styles.emptyStateSubText}>Start making transactions to see them here</Text>
-        </View>
+        </Animated.View>
       )}
 
       {!loading && !error && recentTransactions.map((item:any, index:any) => (
-        <TouchableOpacity 
-          key={item.id || index} 
-          style={styles.transaction}
+        <AnimatedTransactionItem
+          key={item.id || index}
+          item={item}
+          index={index}
           onPress={() => router.push(`/explore/${encodeURIComponent(item.id)}?title=${encodeURIComponent(item.title)}&status=${encodeURIComponent(item.status)}&amount=${encodeURIComponent(item.amount)}&date=${encodeURIComponent(item.date)}&reference=${encodeURIComponent(item.reference)}`)}
-        >
-          <Ionicons name={item.icon} size={25} color="#959595" />
-          <View style={styles.transContent}>
-            <View style={styles.transTop}>
-              <Text style={styles.transTitle}>{item.title}</Text>
-              <Text style={styles.transAmount}>{item.amount}</Text>
-            </View>
-            <Text style={styles.transDate}>{item.date}</Text>
-            <Text style={styles.transRef}>{item.reference}</Text>
-          </View>
-          {/* {item.status && (
-            <View style={[
-              styles.statusBadge, 
-              { backgroundColor: item.status === 'SUCCESS' ? '#E8F5E8' : item.status === 'PENDING' ? '#FFF3CD' : '#FFEBEE' }
-            ]}>
-              <Text style={[
-                styles.statusText,
-                { color: item.status === 'SUCCESS' ? '#2E7D32' : item.status === 'PENDING' ? '#F57C00' : '#C62828' }
-              ]}>
-                {item.status}
-              </Text>
-            </View>
-          )} */}
-        </TouchableOpacity>
+        />
       ))}
 
       {!loading && !error && recentTransactions.length > 0 && (
-        <TouchableOpacity style={styles.seeAll} onPress={() => router.push('/(tabs)/explore')}>
-          <Ionicons name="add-circle-outline" size={20} color="#959595" />
-          <Text style={styles.seeAllText}>See all Transactions</Text>
-        </TouchableOpacity>
+        <Animated.View
+          style={{
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }]
+          }}
+        >
+          <TouchableOpacity style={styles.seeAll} onPress={() => router.push('/(tabs)/explore')}>
+            <Ionicons name="add-circle-outline" size={20} color="#959595" />
+            <Text style={styles.seeAllText}>See all Transactions</Text>
+          </TouchableOpacity>
+        </Animated.View>
       )}
     </ScrollView>
   );
 }
+
+const AnimatedTransactionItem: React.FC<{
+  item: any;
+  index: number;
+  onPress: () => void;
+}> = ({ item, index, onPress }) => {
+  const itemFadeAnim = useRef(new Animated.Value(0)).current;
+  const itemSlideAnim = useRef(new Animated.Value(30)).current;
+
+  useEffect(() => {
+    Animated.timing(itemFadeAnim, {
+      toValue: 1,
+      duration: 500,
+      delay: (index * 100) + 600, // Stagger animation based on index
+      useNativeDriver: true,
+    }).start();
+
+    Animated.timing(itemSlideAnim, {
+      toValue: 0,
+      duration: 400,
+      delay: (index * 100) + 600,
+      useNativeDriver: true,
+    }).start();
+  }, [index]);
+
+  return (
+    <Animated.View
+      style={{
+        opacity: itemFadeAnim,
+        transform: [{ translateY: itemSlideAnim }]
+      }}
+    >
+      <TouchableOpacity style={styles.transaction} onPress={onPress}>
+        <Ionicons name={item.icon} size={25} color="#959595" />
+        <View style={styles.transContent}>
+          <View style={styles.transTop}>
+            <Text style={styles.transTitle}>{item.title}</Text>
+            <Text style={styles.transAmount}>{item.amount}</Text>
+          </View>
+          <Text style={styles.transDate}>{item.date}</Text>
+          <Text style={styles.transRef}>{item.reference}</Text>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
 
 const ActionButton: React.FC<{ 
   label: string; 
@@ -225,6 +339,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '600',
     fontFamily: 'InstrumentSansSemiBold',
+    color: '#000',
   },
   subText: {
     color: '#959595',
@@ -290,6 +405,7 @@ const styles = StyleSheet.create({
   agentBtnText: {
     fontSize: 14,
     fontFamily: 'InstrumentSansBold',
+    color: '#000',
   },
   recentSection: {
     marginBottom: 10,
@@ -350,7 +466,7 @@ const styles = StyleSheet.create({
   transaction: {
     flexDirection: 'row',
     marginBottom: 35,
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 10,
     position: 'relative',
   },

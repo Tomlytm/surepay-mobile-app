@@ -63,7 +63,7 @@ export const useValidateOTP = (user_id: number) => {
       // toast.success(response.message || `OTP validation successful`);
     },
 
-    onError: (error) => {
+    onError: (error: any) => {
       console.log(error.response.data.message);
      
     },
@@ -94,7 +94,7 @@ export const useResendOTP = (user_id: number) => {
         text2: response.message || 'OTP has been resent successfully.',
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       // console.log(error.response.data.message);
       Toast.show({
         type: 'error',
@@ -144,7 +144,7 @@ export const useOnboardUser = (onSuccess: (response: any) => void, user_id: numb
       });
       onSuccess(response);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error(error, "Onboarding failed");
       Toast.show({
         type: 'error',

@@ -15,6 +15,7 @@ export const apiRoutes = {
       createRoute(`auth/${user_id}/onboard/${type}`),
     resetPasswordRequest: createRoute("auth/reset-password/request"),
     updatePassword: createRoute("auth/reset-password/update"),
+    changePassword: createRoute("users/change-password"),
     register: createRoute("auth/register"),
   },
   utility: {
@@ -24,16 +25,28 @@ export const apiRoutes = {
       createRoute(`transactions/validate/phone-number/${phoneNumber}`),
   },
   plans: {
-plans: (network: string) =>
-  createRoute(`plans/${network}`)
+    plans: (network: string) =>
+      createRoute(`plans/${network}`)
+  },
+  billers: {
+    billers: createRoute("billers/categories"),
+    billersByCategory: (category: string) =>
+      createRoute(`billers/${category}`),
+    billerBouquet: (category: string, bouquet_id: string) =>
+      createRoute(`billers/${category}/bouquets/${bouquet_id}`),
   },
   transactions: {
     get: createRoute("transactions"),
     getById: (id: string | string[]) => `${BASE_URL}transactions/${id}`,
     airtimePurchase: createRoute("transactions/airtime/purchase"),
     dataPurchase: createRoute("transactions/data/purchase"),
+    electricityPurchase: createRoute("transactions/electricity/purchase"),
+    betPurchase: createRoute("transactions/bet/purchase"),
+    educationPurchase: createRoute("transactions/education/purchase"),
+    internetPurchase: createRoute("transactions/internet/purchase"),
+    tvPurchase: createRoute("transactions/tv/purchase"),
     submitpin: createRoute("cards/auth/pin"),
-    submitotp: createRoute("cards/auth/otp"),
+    submitotp: createRoute("transactions/complete"),
   },
   calendar: {
     createReminder: createRoute("Calendar/reminder"),

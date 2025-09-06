@@ -119,7 +119,7 @@ export default function Signup({ navigation }: any) {
           <DynamicTextInput
             label="Phone Number"
             value={phoneNumber}
-            inputType="text"
+            inputType="phone"
             onChangeText={(text) => {
               setPhoneNumber(text);
               setErrors((prev) => ({ ...prev, phoneNumber: "" }));

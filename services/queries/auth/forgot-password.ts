@@ -26,11 +26,11 @@ export const useUpdatePassword = (onSuccess?: () => void) => {
       });
       onSuccess?.();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       Toast.show({
         type: 'error',
         text1: 'Update Failed',
-        text2: error.response?.data?.message || 'An unexpected error occurred.',
+        text2: error?.response?.data?.message || 'An unexpected error occurred.',
       });
     }
   });
@@ -59,7 +59,7 @@ export const useRequestPasswordReset = () => {
         text2: response.message || 'Password reset link sent to your email.',
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       Toast.show({
         type: 'error',
         text1: 'Reset Request Failed',
@@ -72,6 +72,42 @@ export const useRequestPasswordReset = () => {
     requestPasswordReset: mutateAsync,
     requestingPasswordReset: isPending,
     requestedPasswordReset: isSuccess,
+    data,
+  };
+};
+interface IChangePassword {
+  old_password: string;
+  password: string;
+}
+
+export const useChangePassword = () => {
+  const { mutateAsync, isPending, isSuccess, data } = useMutation({
+    mutationFn: (body: IChangePassword) =>
+      api.post({
+        url: apiRoutes.auth.changePassword,
+        body,
+        auth: false,
+      }),
+    onSuccess: (response) => {
+      Toast.show({
+        type: 'success',
+        text1: 'Password Changed',
+        text2: response.message || 'Password changed successfully.',
+      });
+    },
+    onError: (error: any) => {
+      Toast.show({
+        type: 'error',
+        text1: 'Change Password Failed',
+        text2: error.response?.data?.message || 'An unexpected error occurred.',
+      });
+    },
+  });
+
+  return {
+    changePassword: mutateAsync,
+    changingPassword: isPending,
+    changedPassword: isSuccess,
     data,
   };
 };

@@ -1,40 +1,43 @@
+import MonthYearPicker from "@/components/DateField";
+import { useValidatePhoneNumber } from "@/services/queries/extra/utility";
+import { AirtimePurchasePayload, useAirtimePurchase, useFetchTransactions, useSubmitPin } from "@/services/queries/transactions";
+import * as Contacts from "expo-contacts";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
-import * as Animatable from 'react-native-animatable';
 import {
-  ScrollView,
-  Image,
-  Platform,
-  TouchableOpacity,
-  Modal,
   FlatList,
-  View as RNView,
+  Image,
   KeyboardAvoidingView,
+  Modal,
+  Platform,
+  View as RNView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import * as Animatable from 'react-native-animatable';
+import CurrencyInput from "react-native-currency-input";
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import ReactNativeModal from "react-native-modal";
 import {
-  TextInput,
+  ActivityIndicator,
+  Button,
   Checkbox,
   RadioButton,
-  Button,
-  ActivityIndicator,
+  TextInput,
 } from "react-native-paper";
-import Icon from "react-native-vector-icons/MaterialIcons";
-import CurrencyInput from "react-native-currency-input";
-import * as Contacts from "expo-contacts";
-import { StyleSheet, View, Text } from "react-native";
-import ReactNativeModal from "react-native-modal";
-import MonthYearPicker from "@/components/DateField";
-import { useAirtimePurchase } from "@/services/queries/transactions";
-import { useValidatePhoneNumber } from "@/services/queries/extra/utility";
-import { router } from "expo-router";
 import Toast from "react-native-toast-message";
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { useSubmitPin } from "@/services/queries/transactions";
+import Icon from "react-native-vector-icons/MaterialIcons";
 
 export default function BuyAirtime() {
-  const [phoneNumber, setPhoneNumber] = useState("0912146818");
-  const [amount, setAmount] = useState<number | null>(null);
+  const params = useLocalSearchParams();
+  
+  const [phoneNumber, setPhoneNumber] = useState(params.phoneNumber as string || "0912146818");
+  const [amount, setAmount] = useState<number | null>(params.amount ? Number(params.amount) : null);
   const [saveBeneficiary, setSaveBeneficiary] = useState(false);
-  const [network, setNetwork] = useState("MTN");
+  const [network, setNetwork] = useState((params.network as string)?.toLowerCase() || "mtn");
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [contacts, setContacts] = useState<Contacts.Contact[]>([]);
   const [isModalVisible, setModalVisible] = useState(false);
@@ -102,6 +105,13 @@ export default function BuyAirtime() {
     });
   });
 
+  // Fetch recent airtime transactions
+  const { transactions: recentTransactions, loading: transactionsLoading } = useFetchTransactions({
+    transaction_type: 'AIRTIME',
+    limit: 3,
+    page: 1,
+  });
+
   useEffect(() => {
     if (modalManuallyClosed && requirePin) {
       // Redirect to failed screen
@@ -133,14 +143,14 @@ export default function BuyAirtime() {
   }, [normalizedPhone]);
 
   useEffect(() => {
-    if (detectedNetwork) {
-      // Match detected network to label case
+    if (detectedNetwork && !params.buyAgain) {
+      // Only auto-detect network if not coming from buy again
       const formatted = detectedNetwork.toLowerCase();
       if (["mtn", "airtel", "glo", "9mobile"].includes(formatted)) {
         setNetwork(formatted);
       }
     }
-  }, [detectedNetwork]);
+  }, [detectedNetwork, params.buyAgain]);
 
   const renderCardLogo = () => {
     switch (cardType) {
@@ -224,14 +234,14 @@ export default function BuyAirtime() {
       },
     };
 
-    purchaseAirtime(payload);
+    purchaseAirtime(payload as AirtimePurchasePayload);
 
   }
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => { }}
+          onPress={() => router.back()}
           style={{
             borderWidth: 1,
             borderColor: "#E4F2FD",
@@ -325,7 +335,7 @@ export default function BuyAirtime() {
                 },
               ]}
               contentStyle={{
-                paddingVertical: 10,
+                paddingVertical: Platform.OS === 'android' ? 6 : 10,
                 flexDirection: "column",
                 justifyContent: "center",
                 alignItems: "center",
@@ -333,7 +343,7 @@ export default function BuyAirtime() {
               labelStyle={{
                 color: network === item.label ? "#353535" : "#757575",
                 fontFamily: "InstrumentSansSemiBold",
-                fontSize: 14,
+                fontSize: Platform.OS === 'android' ? 12 : 14,
                 textTransform: item.label !== "mtn" ? "capitalize" : "uppercase",
                 width: "100%",
               }}
@@ -746,13 +756,13 @@ const styles = StyleSheet.create({
     marginRight: 10,
     borderRadius: 15,
     borderColor: "transparent",
-    width: 80,
+    width: Platform.OS === 'android' ? 65 : 80,
     backgroundColor: "transparent",
   },
   networkIcon: {
-    width: 24,
-    height: 24,
-    marginLeft: -27,
+    width: Platform.OS === 'android' ? 20 : 24,
+    height: Platform.OS === 'android' ? 20 : 24,
+    marginLeft: Platform.OS === 'android' ? -22 : -27,
     borderRadius: 5,
   },
   radioRow: {
