@@ -10,6 +10,8 @@ export default function LeadsLayout() {
       <Stack.Screen name="buy_data" options={{ headerShown: false }} />
       <Stack.Screen name="pay_bills" options={{ headerShown: false }} />
       <Stack.Screen name="otpValidation" options={{ headerShown: false }} />
+      <Stack.Screen name="transfer_success" options={{ headerShown: false }} />
+      <Stack.Screen name="transfer_failed" options={{ headerShown: false }} />
     </Stack>
   );
 }

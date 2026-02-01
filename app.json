@@ -7,7 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "surepay",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
     "splash": {
       "image": "./assets/images/surepay.png",
       "backgroundColor": "#1E3A8A"

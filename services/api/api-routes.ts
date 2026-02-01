@@ -38,6 +38,7 @@ export const apiRoutes = {
   transactions: {
     get: createRoute("transactions"),
     getById: (id: string | string[]) => `${BASE_URL}transactions/${id}`,
+    summary: createRoute("dashboard/transaction-summary"),
     airtimePurchase: createRoute("transactions/airtime/purchase"),
     dataPurchase: createRoute("transactions/data/purchase"),
     electricityPurchase: createRoute("transactions/electricity/purchase"),

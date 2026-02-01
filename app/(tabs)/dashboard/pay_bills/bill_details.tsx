@@ -41,6 +41,7 @@ import {
   View,
 } from "react-native"
 import Icon from "react-native-vector-icons/MaterialIcons"
+import { RadioButton } from "react-native-paper"
 import { WebView } from "react-native-webview"
 
 const paymentData = {
@@ -65,7 +66,7 @@ const paymentData = {
 interface Bouquet {
   id: string
   name: string
-  price: number
+  price: string | number
   type: string
   code: string
   description: string
@@ -147,6 +148,10 @@ const BillerDetailsScreen: React.FC<BillerDetailsScreenProps> = ({ onBack }) => 
   const [securityCode, setSecurityCode] = useState("111")
   const [cardholderName, setCardholderName] = useState("Jay Jay")
   const [showCardInputs, setShowCardInputs] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState("card")
+  const [isTransferModalVisible, setTransferModalVisible] = useState(false)
+  const [accessCode, setAccessCode] = useState("")
+  const [transactionReference, setTransactionReference] = useState("")
 
   const [otpCode, setOtpCode] = useState("")
   const [otpReference, setOtpReference] = useState("")
@@ -289,7 +294,7 @@ const BillerDetailsScreen: React.FC<BillerDetailsScreenProps> = ({ onBack }) => 
           if (billerData.selectedBouquet) {
             setSelectedBouquet(billerData.selectedBouquet)
             setSubscriptionPackage(billerData.selectedBouquet.code)
-            setAmount(String(billerData.selectedBouquet.price))
+            setAmount(String(billerData.selectedBouquet.price || 0))
           }
         } else {
           Alert.alert("Error", "No biller selected. Please go back and select one.")
@@ -1272,21 +1277,19 @@ const BillerDetailsScreen: React.FC<BillerDetailsScreenProps> = ({ onBack }) => 
           {/* Payment Method (Common for all categories) */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Payment Method</Text>
-            <View style={styles.paymentMethodContainer}>
-              <View style={styles.paymentOption}>
-                <View style={[styles.cardIconContainer]}>
-                  <Ionicons name="card-outline" size={20} color="#6b7280" />
-                </View>
-                <Text style={styles.paymentMethodText}>•••• •••• •••• {cardNumber.slice(-4)}</Text>
-                <View style={styles.visaBadge}>
-                  <Text style={styles.visaText}>VISA</Text>
-                </View>
-              </View>
-              <TouchableOpacity style={styles.anotherCardButton} onPress={() => setShowCardInputs(!showCardInputs)}>
-                <Ionicons name={showCardInputs ? "remove" : "add"} size={16} color="#FF8C00" />
-                <Text style={styles.anotherCardText}>{showCardInputs ? "Hide card details" : "Edit card details"}</Text>
+            <RadioButton.Group
+              onValueChange={setPaymentMethod}
+              value={paymentMethod}
+            >
+              <TouchableOpacity style={styles.radioRow} onPress={() => setPaymentMethod("card")}>
+                <RadioButton value="card" />
+                <Text style={styles.paymentMethodLabel}>Pay with Card</Text>
               </TouchableOpacity>
-            </View>
+              <TouchableOpacity style={styles.radioRow} onPress={() => setPaymentMethod("transfer")}>
+                <RadioButton value="transfer" />
+                <Text style={styles.paymentMethodLabel}>Bank Transfer</Text>
+              </TouchableOpacity>
+            </RadioButton.Group>
           </View>
 
           {showCardInputs && (
@@ -1478,7 +1481,7 @@ const BillerDetailsScreen: React.FC<BillerDetailsScreenProps> = ({ onBack }) => 
                     onPress={() => {
                       setSelectedBouquet(item)
                       setSubscriptionPackage(item.code)
-                      setAmount(String(item.price))
+                      setAmount(String(item.price || 0))
                       setPlanModalVisible(false)
                       setIsBouquetModalVisible(false)
                     }}
@@ -1488,7 +1491,7 @@ const BillerDetailsScreen: React.FC<BillerDetailsScreenProps> = ({ onBack }) => 
                       <Text style={styles.bouquetDescription}>{item.description}</Text>
                     </View>
                     <View style={styles.bouquetPrice}>
-                      <Text style={styles.priceText}>₦{item.price}</Text>
+                      <Text style={styles.priceText}>₦{item.price || 0}</Text>
                       <Text style={styles.priceType}>{item.type}</Text>
                     </View>
                     <Ionicons name="chevron-forward" size={20} color="#959595" />
@@ -2189,6 +2192,15 @@ const styles = StyleSheet.create({
   cardRowInputs: {
     flexDirection: "row",
     alignItems: "flex-end",
+  },
+  radioRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  paymentMethodLabel: {
+    color: "#353535",
+    fontFamily: "InstrumentSans",
+    fontSize: 16,
   },
 }) // Added missing closing brace for StyleSheet.create
 

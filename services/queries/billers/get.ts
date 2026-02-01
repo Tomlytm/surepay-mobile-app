@@ -88,7 +88,7 @@ type Bouquet = {
     code: string,
     name: string,
     description: string,
-    price: string,
+    price: string | number,
     type: string
 }
 

@@ -44,7 +44,7 @@ const DynamicTextInput: React.FC<DynamicTextInputProps> = ({
       value={value}
       onChangeText={onChangeText}
       secureTextEntry={secureText && inputType === 'password'} // Use secureText state if it's a password field
-      keyboardType={inputType === 'text' ? 'default' : 'default'}  // Adjust keyboard type if necessary
+      keyboardType={inputType === 'numeric' ? 'numeric' : inputType === 'email' ? 'email-address' : inputType === 'phone' ? 'phone-pad' : 'default'}
       right={
         inputType === 'password' ? (
           <TextInput.Icon

@@ -43,6 +43,20 @@ interface TransactionsApiResponse {
   last_page: number;
 }
 
+export interface TransactionSummaryCategory {
+  category: string;
+  transaction_types: string[];
+  count: number;
+  total_amount: number;
+}
+
+export interface TransactionSummary {
+  summary: TransactionSummaryCategory[];
+  total_transactions: number;
+  grand_total_amount: number;
+  commission_earned: number;
+}
+
 // Common interfaces for all transaction types
 interface CardData {
   card_number: string;
@@ -191,6 +205,45 @@ export const useFetchTransactions = (params: UseFetchTransactionsParams = {}) =>
 
   return {
     transactions: data,
+    loading: isLoading,
+    error: isError,
+    refetch,
+  };
+};
+
+export interface UseFetchTransactionSummaryParams {
+  start_date?: string;
+  end_date?: string;
+}
+
+export const useFetchTransactionSummary = (params: UseFetchTransactionSummaryParams = {}) => {
+  const { start_date, end_date } = params;
+  
+  const { data, isLoading, isError, refetch } = useQuery<TransactionSummary>({
+    queryKey: ["transaction-summary", start_date, end_date],
+    queryFn: async () => {
+      const searchParams = new URLSearchParams();
+      
+      if (start_date) searchParams.append("start_date", start_date);
+      if (end_date) searchParams.append("end_date", end_date);
+      
+      const queryString = searchParams.toString();
+      const url = queryString ? `${apiRoutes.transactions.summary}?${queryString}` : apiRoutes.transactions.summary;
+      
+      const response = await api.get({
+        url,
+        auth: true,
+      });
+      return response;
+    },
+  });
+
+  if (isError) {
+    toast.error("Failed to fetch transaction summary");
+  }
+
+  return {
+    summary: data,
     loading: isLoading,
     error: isError,
     refetch,

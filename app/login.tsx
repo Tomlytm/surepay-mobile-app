@@ -12,6 +12,7 @@ export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("thesuburbanbarber@gmail.com");
   const [password, setPassword] = useState("");
+  const [emailError, setEmailError] = useState("");
 
   // const { login, logging, } = useLogin(() => {
   //   router.push("/(tabs)/dashboard");
@@ -19,7 +20,23 @@ export default function LoginScreen() {
 
   const [loading, setLoading] = useState(false);
 
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email.trim()) {
+      setEmailError("Email address is required.");
+      return false;
+    } else if (!emailRegex.test(email)) {
+      setEmailError("Please enter a valid email address.");
+      return false;
+    } else {
+      setEmailError("");
+      return true;
+    }
+  };
+
 const handleSubmit = async () => {
+  if (!validateEmail(email)) return;
+  
   setLoading(true);
   try {
     // 1. Generate RSA key pair natively
@@ -86,7 +103,16 @@ console.log("Decrypted AES Key:", decryptedAesKey);
       <View style={styles.container}>
         <View style={styles.centeredContent}>
           <Text style={styles.title}>Welcome Back</Text>
-          <DynamicTextInput label="Email Address" value={email} inputType="text" onChangeText={setEmail} />
+          <DynamicTextInput 
+            label="Email Address" 
+            value={email} 
+            inputType="text" 
+            onChangeText={(text) => {
+              setEmail(text);
+              if (emailError) setEmailError("");
+            }} 
+          />
+          {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
           <DynamicTextInput label="Password" value={password} inputType="password" onChangeText={setPassword} />
 
           <TouchableOpacity onPress={() => router.push("/forgot-password")}>
@@ -154,6 +180,11 @@ const styles = StyleSheet.create({
     color: "#E5932B",
     fontWeight: 500,
     textDecorationLine: "underline",
+  },
+  errorText: {
+    color: "red",
+    fontSize: 14,
+    marginBottom: 10,
   },
   loginButton: {
     backgroundColor: "#1E3A8A",

@@ -1,7 +1,10 @@
+import DynamicTextInput from '@/components/TextInput';
+import api from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -13,10 +16,11 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
-  View,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
 interface PersonalInformationScreenProps {
   onBack?: () => void;
@@ -59,15 +63,26 @@ const countries: Country[] = [
   { name: 'Germany', code: 'DE', dialCode: '+49', flag: '🇩🇪' },
 ];
 
+const ChangeImageIcon = () => (
+  <Svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+    <Path d="M6.00001 7.16667C4.98667 7.16667 4.16667 6.34667 4.16667 5.33333C4.16667 4.32 4.98667 3.5 6.00001 3.5C7.01334 3.5 7.83334 4.32 7.83334 5.33333C7.83334 6.34667 7.01334 7.16667 6.00001 7.16667ZM6.00001 4.5C5.54001 4.5 5.16667 4.87333 5.16667 5.33333C5.16667 5.79333 5.54001 6.16667 6.00001 6.16667C6.46001 6.16667 6.83334 5.79333 6.83334 5.33333C6.83334 4.87333 6.46001 4.5 6.00001 4.5Z" fill="#1E3A8A" />
+    <Path d="M10 15.1673H6C2.38 15.1673 0.833328 13.6207 0.833328 10.0007V6.00065C0.833328 2.38065 2.38 0.833984 6 0.833984H8.66666C8.93999 0.833984 9.16666 1.06065 9.16666 1.33398C9.16666 1.60732 8.93999 1.83398 8.66666 1.83398H6C2.92666 1.83398 1.83333 2.92732 1.83333 6.00065V10.0007C1.83333 13.074 2.92666 14.1673 6 14.1673H10C13.0733 14.1673 14.1667 13.074 14.1667 10.0007V6.66732C14.1667 6.39398 14.3933 6.16732 14.6667 6.16732C14.94 6.16732 15.1667 6.39398 15.1667 6.66732V10.0007C15.1667 13.6207 13.62 15.1673 10 15.1673Z" fill="#1E3A8A" />
+    <Path d="M10.4467 6.50028C10.1867 6.50028 9.94667 6.40695 9.77333 6.22695C9.56667 6.02028 9.46667 5.71362 9.51333 5.40028L9.64667 4.47362C9.68 4.24028 9.82 3.95362 9.99333 3.78695L12.4133 1.36695C13.38 0.400285 14.22 0.953618 14.6333 1.36695C15.0267 1.76028 15.2067 2.17362 15.1667 2.60028C15.1333 2.94028 14.96 3.26695 14.6333 3.58695L12.2133 6.00695C12.0467 6.17362 11.76 6.31362 11.5267 6.35362L10.6 6.48695C10.5467 6.50028 10.4933 6.50028 10.4467 6.50028ZM13.1133 2.08028L10.6933 4.50028C10.6733 4.52028 10.64 4.59362 10.6333 4.62695L10.5067 5.49362L11.38 5.37362C11.4067 5.36695 11.48 5.33362 11.5067 5.30695L13.9267 2.88695C14.0733 2.74028 14.16 2.60695 14.1667 2.50695C14.18 2.36695 14.04 2.19362 13.9267 2.08028C13.58 1.73362 13.42 1.77362 13.1133 2.08028Z" fill="#1E3A8A" />
+    <Path d="M13.9333 4.08586C13.8867 4.08586 13.84 4.07919 13.8 4.06586C12.9067 3.81252 12.1933 3.09919 11.94 2.20586C11.8667 1.93919 12.02 1.66586 12.2867 1.59252C12.5533 1.51919 12.8267 1.67252 12.9 1.93919C13.06 2.49919 13.5067 2.95252 14.0733 3.11252C14.34 3.18586 14.4933 3.46586 14.42 3.72586C14.3467 3.93919 14.1467 4.08586 13.9333 4.08586Z" fill="#1E3A8A" />
+    <Path d="M1.78 13.133C1.62 13.133 1.46 13.053 1.36667 12.913C1.21334 12.6864 1.27334 12.373 1.5 12.2197L4.78667 10.013C5.50667 9.53305 6.5 9.58638 7.15334 10.1397L7.37334 10.333C7.70667 10.6197 8.27333 10.6197 8.6 10.333L11.3733 7.95305C12.08 7.34638 13.1933 7.34638 13.9067 7.95305L14.9933 8.88638C15.2 9.06638 15.2267 9.37971 15.0467 9.59305C14.8667 9.79971 14.5533 9.82638 14.34 9.64638L13.2533 8.71305C12.92 8.42638 12.3533 8.42638 12.0267 8.71305L9.25334 11.093C8.54667 11.6997 7.43334 11.6997 6.72 11.093L6.5 10.8997C6.19334 10.6397 5.68667 10.613 5.34667 10.8464L2.06667 13.053C1.97334 13.1064 1.87334 13.133 1.78 13.133Z" fill="#1E3A8A" />
+  </Svg>
+);
+
 const PersonalInformationScreen: React.FC<PersonalInformationScreenProps> = ({ onBack }) => {
   const [formData, setFormData] = useState<FormData>({
     gender: 'Male',
-    firstName: 'Kalistusu',
-    lastName: 'Nwankwo',
-    phoneNumber: '8023957843',
-    email: 'kalistusu.89@gmail.com',
+    firstName: '',
+    lastName: '',
+    phoneNumber: '',
+    email: '',
     dateOfBirth: null,
   });
+  const [userData, setUserData] = useState<any>(null);
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -76,6 +91,44 @@ const PersonalInformationScreen: React.FC<PersonalInformationScreenProps> = ({ o
   const [profileImage, setProfileImage] = useState('https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-uiWZpE1Qty216BeoE2TvGhJuTzepqs.png');
   const [isLoading, setIsLoading] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Fetch user data from AsyncStorage on component mount
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const userDataString = await AsyncStorage.getItem('user');
+        if (userDataString) {
+          const user = JSON.parse(userDataString);
+          setUserData(user);
+          
+          // Set profile image if available
+          if (user.profile_image) {
+            setProfileImage(user.profile_image);
+          }
+          
+          // Parse date of birth if available
+          let dateOfBirth = null;
+          if (user.dob) {
+            dateOfBirth = new Date(user.dob);
+          }
+          
+          // Set form data from user data
+          setFormData({
+            gender: user.gender === 'MALE' ? 'Male' : user.gender === 'FEMALE' ? 'Female' : 'Male',
+            firstName: user.firstname || '',
+            lastName: user.lastname || '',
+            phoneNumber: user.phone || '',
+            email: user.email || '',
+            dateOfBirth: dateOfBirth,
+          });
+        }
+      } catch (error) {
+        console.log('Error fetching user data:', error);
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -193,9 +246,33 @@ const PersonalInformationScreen: React.FC<PersonalInformationScreenProps> = ({ o
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Prepare the payload in JSON format
+      const payload: any = {
+        firstname: formData.firstName.trim(),
+        lastname: formData.lastName.trim(),
+        gender: formData.gender === 'Male' ? 'MALE' : 'FEMALE',
+      };
       
+      // Add date of birth if available (format: YYYY-MM-DD)
+      if (formData.dateOfBirth) {
+        payload.dob = formData.dateOfBirth.toISOString().split('T')[0];
+      }
+
+      console.log('Profile update payload:', payload);
+
+      // Call the API
+      const response = await api.post({
+        url: 'api/v1/users/profile/update',
+        data: payload,
+        auth: true,
+      });
+      console.log('Profile update response:', response);
+
+      // Update user data in AsyncStorage
+      const updatedUser = response;
+      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+      setUserData(updatedUser);
+
       Alert.alert(
         'Success',
         'Your personal information has been updated successfully!',
@@ -203,12 +280,15 @@ const PersonalInformationScreen: React.FC<PersonalInformationScreenProps> = ({ o
           text: 'OK', 
           onPress: () => {
             setHasChanges(false);
-            console.log('Changes saved:', { ...formData, country: selectedCountry });
           }
         }]
       );
     } catch (error) {
-      Alert.alert('Error', 'Failed to save changes. Please try again.');
+      console.log('Profile update error:', error);
+      Alert.alert(
+        'Error', 
+        (error as {response?: {data: {message: string}}})?.response?.data?.message || 'Failed to save changes. Please try again.'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -295,7 +375,7 @@ const PersonalInformationScreen: React.FC<PersonalInformationScreenProps> = ({ o
               <Image source={{ uri: profileImage }} style={styles.profileImage} />
             </View>
             <TouchableOpacity onPress={handleImageChange} style={styles.changeImageButton}>
-              <Ionicons name="camera-outline" size={16} color="#3b82f6" />
+              <ChangeImageIcon />
               <Text style={styles.changeImageText}>Change Image</Text>
             </TouchableOpacity>
           </View>
@@ -304,8 +384,10 @@ const PersonalInformationScreen: React.FC<PersonalInformationScreenProps> = ({ o
           <View style={styles.formSection}>
             {/* Gender Selection */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Gender</Text>
-              <View style={styles.genderContainer}>
+              <View style={styles.genderInputContainer}>
+                <Text style={styles.genderLabel}>Gender</Text>
+                
+                {/* Male Option */}
                 <TouchableOpacity
                   style={[
                     styles.genderOption,
@@ -319,9 +401,13 @@ const PersonalInformationScreen: React.FC<PersonalInformationScreenProps> = ({ o
                   ]}>
                     {formData.gender === 'Male' && <View style={styles.radioButtonInner} />}
                   </View>
-                  <Text style={styles.genderText}>Male</Text>
+                  <Text style={[
+                    styles.genderText,
+                    formData.gender === 'Male' && styles.genderTextSelected
+                  ]}>Male</Text>
                 </TouchableOpacity>
                 
+                {/* Female Option */}
                 <TouchableOpacity
                   style={[
                     styles.genderOption,
@@ -335,96 +421,69 @@ const PersonalInformationScreen: React.FC<PersonalInformationScreenProps> = ({ o
                   ]}>
                     {formData.gender === 'Female' && <View style={styles.radioButtonInner} />}
                   </View>
-                  <Text style={styles.genderText}>Female</Text>
+                  <Text style={[
+                    styles.genderText,
+                    formData.gender === 'Female' && styles.genderTextSelected
+                  ]}>Female</Text>
                 </TouchableOpacity>
               </View>
             </View>
 
             {/* First Name */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>First Name</Text>
-              <TextInput
-                style={[styles.textInput, errors.firstName && styles.inputError]}
+              <DynamicTextInput
+                label="First Name"
                 value={formData.firstName}
                 onChangeText={(text) => handleInputChange('firstName', text)}
-                placeholder="Enter your first name"
-                autoCapitalize="words"
-                maxLength={50}
+                inputType="text"
               />
               {errors.firstName && <Text style={styles.errorText}>{errors.firstName}</Text>}
             </View>
 
             {/* Last Name */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Last Name</Text>
-              <TextInput
-                style={[styles.textInput, errors.lastName && styles.inputError]}
+              <DynamicTextInput
+                label="Last Name"
                 value={formData.lastName}
                 onChangeText={(text) => handleInputChange('lastName', text)}
-                placeholder="Enter your last name"
-                autoCapitalize="words"
-                maxLength={50}
+                inputType="text"
               />
               {errors.lastName && <Text style={styles.errorText}>{errors.lastName}</Text>}
             </View>
 
             {/* Phone Number */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Phone Number</Text>
-              <View style={[styles.phoneInputContainer, errors.phoneNumber && styles.inputError]}>
-                <TouchableOpacity 
-                  style={styles.countryCode}
-                  onPress={() => setShowCountryPicker(true)}
-                >
-                  <Text style={styles.flagEmoji}>{selectedCountry.flag}</Text>
-                  <Text style={styles.countryCodeText}>{selectedCountry.dialCode}</Text>
-                  <Ionicons name="chevron-down" size={16} color="#6b7280" />
-                </TouchableOpacity>
-                <TextInput
-                  style={styles.phoneInput}
-                  value={formatPhoneNumber(formData.phoneNumber)}
-                  onChangeText={(text) => {
-                    const cleaned = text.replace(/\D/g, '');
-                    handleInputChange('phoneNumber', cleaned);
-                  }}
-                  placeholder="Enter phone number"
-                  keyboardType="phone-pad"
-                  maxLength={17} // Formatted length
-                />
-              </View>
+              <DynamicTextInput
+                label="Phone Number"
+                value={formData.phoneNumber}
+                onChangeText={(text) => handleInputChange('phoneNumber', text)}
+                inputType="phone"
+              />
               {errors.phoneNumber && <Text style={styles.errorText}>{errors.phoneNumber}</Text>}
             </View>
 
             {/* Email Address */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email Address</Text>
-              <TextInput
-                style={[styles.textInput, errors.email && styles.inputError]}
+              <DynamicTextInput
+                label="Email Address"
                 value={formData.email}
                 onChangeText={(text) => handleInputChange('email', text.toLowerCase())}
-                placeholder="Enter your email"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                maxLength={100}
+                inputType="email"
               />
               {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
             </View>
 
             {/* Date of Birth */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Date of Birth</Text>
-              <TouchableOpacity 
-                style={[styles.dateInput, errors.dateOfBirth && styles.inputError]} 
-                onPress={() => setShowDatePicker(true)}
-              >
-                <Text style={[
-                  styles.dateText, 
-                  !formData.dateOfBirth && styles.placeholderText
-                ]}>
-                  {formData.dateOfBirth ? formatDate(formData.dateOfBirth) : 'Select date of birth'}
-                </Text>
-                <Ionicons name="calendar-outline" size={20} color="#6b7280" />
+              <TouchableOpacity onPress={() => setShowDatePicker(true)}>
+                <DynamicTextInput
+                  label="Date of Birth"
+                  value={formData.dateOfBirth ? formatDate(formData.dateOfBirth) : ''}
+                  inputType="text"
+                  customStyle={{
+                    pointerEvents: 'none'
+                  }}
+                />
               </TouchableOpacity>
               {errors.dateOfBirth && <Text style={styles.errorText}>{errors.dateOfBirth}</Text>}
             </View>
@@ -473,16 +532,55 @@ const PersonalInformationScreen: React.FC<PersonalInformationScreenProps> = ({ o
       </Modal>
 
       {/* Date Picker Modal */}
-      {showDatePicker && (
+      {showDatePicker && Platform.OS === 'ios' && (
+        <Modal
+          transparent={true}
+          animationType="fade"
+          visible={showDatePicker}
+          onRequestClose={() => setShowDatePicker(false)}
+        >
+          <TouchableWithoutFeedback onPress={() => setShowDatePicker(false)}>
+            <View style={styles.datePickerOverlay}>
+              <TouchableWithoutFeedback onPress={() => {}}>
+                <View style={styles.datePickerContainer}>
+                  <View style={styles.datePickerHeader}>
+                    <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                      <Text style={styles.datePickerCancel}>Cancel</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.datePickerTitle}>Select Date</Text>
+                    <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                      <Text style={styles.datePickerDone}>Done</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <DateTimePicker
+                    value={formData.dateOfBirth || new Date()}
+                    mode="date"
+                    display="spinner"
+                    onChange={handleDateChange}
+                    maximumDate={new Date()}
+                    minimumDate={new Date(1900, 0, 1)}
+                    textColor="#000000"
+                    accentColor="#EF8B09"
+                    style={styles.datePicker}
+                  />
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
+      )}
+      
+      {/* Android Date Picker */}
+      {showDatePicker && Platform.OS === 'android' && (
         <DateTimePicker
           value={formData.dateOfBirth || new Date()}
           mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          display="default"
           onChange={handleDateChange}
           maximumDate={new Date()}
           minimumDate={new Date(1900, 0, 1)}
           textColor="#000000"
-          accentColor="#10b981"
+          accentColor="#EF8B09"
         />
       )}
     </SafeAreaView>
@@ -546,10 +644,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   changeImageText: {
-    color: '#3b82f6',
-    fontSize: 14,
+    color: '#1E3A8A',
+    fontSize: 16,
     fontWeight: '500',
-    marginLeft: 4,
+    marginLeft: 8,
+    fontFamily: 'InstrumentSansSemiBold',
   },
   formSection: {
     backgroundColor: '#ffffff',
@@ -558,7 +657,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 5,
   },
   label: {
     fontSize: 14,
@@ -566,23 +665,31 @@ const styles = StyleSheet.create({
     color: '#374151',
     marginBottom: 8,
   },
-  genderContainer: {
-    flexDirection: 'row',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  genderOption: {
-    flex: 1,
+  genderInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
     backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#E7F0FA',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    marginBottom: 15,
+  },
+  genderLabel: {
+    fontSize: 16,
+    color: '#959595',
+    fontFamily: 'InstrumentSans',
+    marginRight: 20,
+    minWidth: 60,
+  },
+  genderOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 20,
   },
   genderOptionSelected: {
-    backgroundColor: '#f8f9fa',
+    // No background change since it's all in one container
   },
   radioButton: {
     width: 20,
@@ -595,17 +702,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   radioButtonSelected: {
-    borderColor: '#3b82f6',
+    borderColor: '#10b981',
   },
   radioButtonInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#10b981',
   },
   genderText: {
     fontSize: 16,
     color: '#374151',
+    fontFamily: 'InstrumentSans',
+  },
+  genderTextSelected: {
+    color: '#10b981',
+    fontFamily: 'InstrumentSansSemiBold',
   },
   textInput: {
     borderWidth: 1,
@@ -621,9 +733,9 @@ const styles = StyleSheet.create({
     borderColor: '#ef4444',
   },
   errorText: {
-    color: '#ef4444',
-    fontSize: 12,
-    marginTop: 4,
+    color: 'red',
+    fontSize: 14,
+    marginBottom: 10,
   },
   phoneInputContainer: {
     flexDirection: 'row',
@@ -749,6 +861,45 @@ const styles = StyleSheet.create({
   countryDialCode: {
     fontSize: 14,
     color: '#6b7280',
+  },
+  datePickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  datePickerContainer: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+  },
+  datePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  datePickerCancel: {
+    fontSize: 16,
+    color: '#6b7280',
+    fontFamily: 'InstrumentSans',
+  },
+  datePickerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1f2937',
+    fontFamily: 'InstrumentSansSemiBold',
+  },
+  datePickerDone: {
+    fontSize: 16,
+    color: '#EF8B09',
+    fontFamily: 'InstrumentSansSemiBold',
+  },
+  datePicker: {
+    backgroundColor: '#ffffff',
   },
 });
 

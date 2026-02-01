@@ -55,11 +55,12 @@ const SkeletonLoader = ({ width, height, borderRadius = 8, style = {} }: any) =>
 
   const translateX = shimmerValue.interpolate({
     inputRange: [-1, 1],
-    outputRange: [-width, width],
+    outputRange: [-(Number(width) || 0), Number(width) || 0],
+    extrapolate: 'clamp',
   });
 
   return (
-    <View style={[{ width, height, backgroundColor: '#E5E5E5', borderRadius, overflow: 'hidden' }, style]}>
+    <View style={[{ width: Number(width) || 0, height: Number(height) || 0, backgroundColor: '#E5E5E5', borderRadius: Number(borderRadius) || 8, overflow: 'hidden' }, style]}>
       <Animated.View
         style={[
           {
@@ -283,6 +284,7 @@ const PayBillsScreen: React.FC<PayBillsScreenProps> = ({ onBack }) => {
                   rotate: chevronRotateAnim.interpolate({
                     inputRange: [0, 1],
                     outputRange: ["0deg", "90deg"],
+                    extrapolate: 'clamp',
                   }),
                 },
               ],
@@ -303,6 +305,7 @@ const PayBillsScreen: React.FC<PayBillsScreenProps> = ({ onBack }) => {
                     translateY: categoryContentAnim.interpolate({
                       inputRange: [0, 1],
                       outputRange: [-10, 0],
+                      extrapolate: 'clamp',
                     }),
                   },
                 ],
@@ -389,6 +392,7 @@ const PayBillsScreen: React.FC<PayBillsScreenProps> = ({ onBack }) => {
                 borderWidth: searchFocusAnim.interpolate({
                   inputRange: [0, 1],
                   outputRange: [0, 1],
+                  extrapolate: 'clamp',
                 }),
               },
             ]}

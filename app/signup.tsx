@@ -53,7 +53,14 @@ export default function Signup({ navigation }: any) {
     if (!firstName.trim()) newErrors.firstName = "First name is required.";
     if (!lastName.trim()) newErrors.lastName = "Last name is required.";
     if (!phoneNumber.trim()) newErrors.phoneNumber = "Phone number is required.";
-    if (!emailAddress.trim()) newErrors.emailAddress = "Email address is required.";
+    if (!emailAddress.trim()) {
+      newErrors.emailAddress = "Email address is required.";
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(emailAddress)) {
+        newErrors.emailAddress = "Please enter a valid email address.";
+      }
+    }
     if (!password.trim()) newErrors.password = "Password is required.";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -86,11 +93,14 @@ export default function Signup({ navigation }: any) {
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 25}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bounces={false}
         >
           <Text style={styles.title}>Create an Account</Text>
 
@@ -119,9 +129,10 @@ export default function Signup({ navigation }: any) {
           <DynamicTextInput
             label="Phone Number"
             value={phoneNumber}
-            inputType="phone"
+            inputType="numeric"
             onChangeText={(text) => {
-              setPhoneNumber(text);
+              const numericText = text.replace(/[^0-9]/g, '');
+              setPhoneNumber(numericText);
               setErrors((prev) => ({ ...prev, phoneNumber: "" }));
             }}
           />
@@ -171,6 +182,7 @@ export default function Signup({ navigation }: any) {
           </Text>
         </ScrollView>
       </TouchableWithoutFeedback>
+      
     </KeyboardAvoidingView>
   );
 }
@@ -182,6 +194,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     justifyContent: "center",
     paddingBottom: 40,
+    paddingTop: 40,
+    minHeight: "100%",
   },
   title: {
     fontSize: 32,

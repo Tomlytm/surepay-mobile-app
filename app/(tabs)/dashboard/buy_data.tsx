@@ -28,11 +28,12 @@ import Icon from "react-native-vector-icons/MaterialIcons";
 import MonthYearPicker from "@/components/DateField";
 import { useValidatePhoneNumber } from "@/services/queries/extra/utility";
 import { useFetchPlans } from "@/services/queries/plans"; // Import the new hook
-import { DataPurchasePayload, useDataPurchase, useFetchTransactions, useSubmitPin } from "@/services/queries/transactions";
+import { DataPurchasePayload, useDataPurchase, useSubmitPin } from "@/services/queries/transactions";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import ReactNativeModal from "react-native-modal";
+import { WebView } from "react-native-webview";
 import Toast from "react-native-toast-message";
 
 interface DataPlan {
@@ -89,6 +90,9 @@ export default function BuyData() {
     const [hasError, setHasError] = useState(false);
     const [reference, setReference] = useState("");
     const [packageSearchQuery, setPackageSearchQuery] = useState('');
+    const [isTransferModalVisible, setTransferModalVisible] = useState(false);
+    const [accessCode, setAccessCode] = useState("");
+    const [transactionReference, setTransactionReference] = useState("");
 
     const normalizedPhone = phoneNumber.startsWith("+234")
         ? phoneNumber.replace("+234", "0")
@@ -160,6 +164,17 @@ export default function BuyData() {
 
     const { purchaseData, purchasing } = useDataPurchase((response) => {
         console.log("Data purchased successfully:", response);
+        
+        // Handle both transfer and card payments with access_code (WebView)
+        if (response?.access_code) {
+            setAccessCode(response.access_code);
+            setTransactionReference(response?.transaction?.reference || "");
+            setCardModalVisible(false); // Close card modal if open
+            setTransferModalVisible(true); // Open WebView modal
+            return;
+        }
+        
+        // Legacy card payment flow (if no access_code)
         if (response?.auth_url === null && response?.transaction?.reference) {
             setRequirePin(true);
             setReference(response.transaction.reference);
@@ -175,6 +190,108 @@ export default function BuyData() {
             text2: error?.message[0] || "Please try again later.",
         });
     });
+
+    const handleWebViewNavigationChange = (navState: any) => {
+        const { url } = navState;
+        console.log('WebView navigation:', url);
+        
+        // More comprehensive success detection for Paystack
+        const isSuccess = url.includes('success') || 
+                         url.includes('callback') || 
+                         url.includes('completed') ||
+                         url.includes('payment/verify') ||
+                         url.includes('payment-complete') ||
+                         url.includes('transaction/verify') ||
+                         url.includes('verify') ||
+                         (url.includes('close') && !url.includes('cancel')) ||
+                         url === 'about:blank';  // Sometimes Paystack redirects to blank page on success
+        
+        const isFailure = url.includes('cancel') || 
+                         url.includes('failed') || 
+                         url.includes('error') ||
+                         url.includes('payment-cancelled') ||
+                         url.includes('payment-failed');
+        
+        if (isSuccess && !navState.loading) {
+            console.log('Payment success detected, navigating to success screen');
+            setTransferModalVisible(false);
+            setAccessCode("");
+            
+            // Navigate to success screen with transaction details
+            router.push({
+                pathname: '/(tabs)/dashboard/transfer_success',
+                params: {
+                    reference: transactionReference,
+                    amount: amount?.toString() || "0",
+                    phone: normalizedPhone,
+                    network: network.charAt(0).toUpperCase() + network.slice(1)
+                }
+            });
+        } 
+        else if (isFailure && !navState.loading) {
+            console.log('Payment failure detected');
+            setTransferModalVisible(false);
+            setAccessCode("");
+            
+            // Navigate to failed screen
+            router.push({
+                pathname: '/(tabs)/dashboard/transfer_failed',
+                params: {
+                    reference: transactionReference,
+                }
+            });
+        }
+    };
+
+    const handleWebViewError = (syntheticEvent: any) => {
+        const { nativeEvent } = syntheticEvent;
+        console.error('WebView error:', nativeEvent);
+        setTransferModalVisible(false);
+        setAccessCode("");
+        
+        router.push({
+            pathname: '/(tabs)/dashboard/transfer_failed',
+            params: {
+                reference: transactionReference,
+            }
+        });
+    };
+
+    const handleWebViewMessage = (event: any) => {
+        try {
+            const data = JSON.parse(event.nativeEvent.data);
+            console.log('WebView message received:', data);
+            
+            if (data.type === 'payment.success' || data.event === 'successful') {
+                console.log('Payment success message received');
+                setTransferModalVisible(false);
+                setAccessCode("");
+                
+                router.push({
+                    pathname: '/(tabs)/dashboard/transfer_success',
+                    params: {
+                        reference: transactionReference,
+                        amount: amount?.toString() || "0",
+                        phone: normalizedPhone,
+                        network: network.charAt(0).toUpperCase() + network.slice(1)
+                    }
+                });
+            } else if (data.type === 'payment.failed' || data.event === 'failed') {
+                console.log('Payment failed message received');
+                setTransferModalVisible(false);
+                setAccessCode("");
+                
+                router.push({
+                    pathname: '/(tabs)/dashboard/transfer_failed',
+                    params: {
+                        reference: transactionReference,
+                    }
+                });
+            }
+        } catch (error) {
+            console.log('Non-JSON message received:', event.nativeEvent.data);
+        }
+    };
 
     const handlePackageSelect = (pkg: DataPlan) => {
         setSelectedPackage(pkg);
@@ -196,11 +313,11 @@ export default function BuyData() {
     };
 
     // Fetch recent data transactions
-    const { transactions: recentTransactions, loading: transactionsLoading } = useFetchTransactions({
-        transaction_type: 'DATA',
-        limit: 3,
-        page: 1,
-    });
+    // const { transactions: recentTransactions, loading: transactionsLoading } = useFetchTransactions({
+    //     transaction_type: 'DATA',
+    //     limit: 3,
+    //     page: 1,
+    // });
 
     useEffect(() => {
         if (modalManuallyClosed && requirePin) {
@@ -308,48 +425,40 @@ setNet(newNet)
         { label: "glo", icon: require("@/assets/images/glo.png") },
     ];
 
-    const handlePay = () => {
-        const [expMonth, expYear] = expiry.split("/").map(str => str.trim());
-
-        let formattedExpYear = expYear;
-        if (expYear && expYear.length === 4) {
-            formattedExpYear = expYear.slice(2);
-        }
-
-        const capitalize = (str: string) => {
-            if (str.toLowerCase() === "mtn") return str.toUpperCase();
-            const match = str.match(/[a-zA-Z]/);
-            if (!match) return str;
-            const idx = match.index!;
-            return str.slice(0, idx) + str.charAt(idx).toUpperCase() + str.slice(idx + 1);
-        };
-
+    const handleTransferPayment = () => {
         const payload = {
             network: net,
             phone: phoneNumber,
-            plan_id: selectedPackage?.code as string, // Add plan code for data purchase
+            plan_id: selectedPackage?.code as string,
             is_beneficiary: saveBeneficiary,
             payment_charge: {
                 payment_card: "NEW",
+                checkout_type: "TRANSFER",
                 card_id: 1,
-                card_data: {
-                    card_number: cardNumber,
-                    expiry_month: expMonth,
-                    expiry_year: formattedExpYear,
-                    security_code: cvv,
-                    fistname: firstname,
-                    lastname: lastname,
-                    email: email,
-                    phone: phoneNumber,
-                    address: cardAddress,
-                    city: cardCity,
-                    state: cardState,
-                    save_card: false,
-                },
+                save_card: false,
+                card_data: null,
             },
         };
 
-        purchaseData(payload as DataPurchasePayload);
+        purchaseData(payload as unknown as DataPurchasePayload);
+    };
+
+    const handlePay = () => {
+        const payload = {
+            network: net,
+            phone: phoneNumber,
+            plan_id: selectedPackage?.code as string,
+            is_beneficiary: saveBeneficiary,
+            payment_charge: {
+                payment_card: "NEW",
+                checkout_type: "CARD",
+                card_id: 1,
+                save_card: false,
+                card_data: null,
+            },
+        };
+
+        purchaseData(payload as unknown as DataPurchasePayload);
     }
 
     return (
@@ -375,13 +484,22 @@ setNet(newNet)
                     <TextInput
                         value={phoneNumber}
                         onChangeText={(text) => {
-                            let formatted = text.replace(/\s+/g, "");
+                            let formatted = text.replace(/\s+/g, ""); // remove spaces
                             if (formatted.startsWith("+234")) {
                                 formatted = formatted.replace("+234", "0");
+                            }
+                            // Ensure it starts with 0 and doesn't exceed 11 digits
+                            if (formatted.length > 0 && !formatted.startsWith("0")) {
+                                formatted = "0" + formatted;
+                            }
+                            // Limit to 11 digits
+                            if (formatted.length > 11) {
+                                formatted = formatted.substring(0, 11);
                             }
                             setPhoneNumber(formatted);
                         }}
                         keyboardType="phone-pad"
+                        maxLength={11}
                         style={[styles.input, { flex: 1, paddingVertical: 10 }]}
                         underlineColor="transparent"
                         activeUnderlineColor="transparent"
@@ -431,7 +549,11 @@ setNet(newNet)
 
             <View style={styles.networkRow}>
                 {loading && normalizedPhone.length === 11 ? (
-                    <ActivityIndicator />
+                    <>
+                        {[1, 2, 3, 4].map((index) => (
+                            <View key={index} style={styles.networkSkeleton} />
+                        ))}
+                    </>
                 ) : (
                     networks.map((item) => (
                         <Button
@@ -449,7 +571,7 @@ setNet(newNet)
                                 },
                             ]}
                             contentStyle={{
-                                paddingVertical: Platform.OS === 'android' ? 6 : 10,
+                                paddingVertical: 10,
                                 flexDirection: "column",
                                 justifyContent: "center",
                                 alignItems: "center",
@@ -457,7 +579,7 @@ setNet(newNet)
                             labelStyle={{
                                 color: network === item.label ? "#353535" : "#757575",
                                 fontFamily: "InstrumentSansSemiBold",
-                                fontSize: Platform.OS === 'android' ? 12 : 14,
+                                fontSize: 12,
                                 textTransform: item.label !== "mtn" ? "capitalize" : "uppercase",
                                 width: "100%",
                             }}
@@ -538,7 +660,7 @@ setNet(newNet)
                 onValueChange={setPaymentMethod}
                 value={paymentMethod}
             >
-                <View style={styles.radioRow}>
+                <TouchableOpacity style={styles.radioRow} onPress={() => setPaymentMethod("card")}>
                     <RadioButton value="card" />
                     <Text
                         style={{
@@ -549,7 +671,19 @@ setNet(newNet)
                     >
                         Pay with Card
                     </Text>
-                </View>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.radioRow} onPress={() => setPaymentMethod("transfer")}>
+                    <RadioButton value="transfer" />
+                    <Text
+                        style={{
+                            color: "#353535",
+                            fontFamily: "InstrumentSans",
+                            fontSize: 16,
+                        }}
+                    >
+                        Bank Transfer
+                    </Text>
+                </TouchableOpacity>
             </RadioButton.Group>
 
             <Button
@@ -580,7 +714,11 @@ setNet(newNet)
                     }
                     if (!error) {
                         setHasError(false);
-                        setCardModalVisible(true);
+                        if (paymentMethod === "transfer") {
+                            handleTransferPayment();
+                        } else {
+                            handlePay(); // Directly call handlePay for card payments
+                        }
                     }
                 }}
             >
@@ -759,8 +897,8 @@ setNet(newNet)
                 </RNView>
             </Modal>
 
-            {/* Payment Modal */}
-            <ReactNativeModal
+            {/* Card Payment Modal - Commented out since we now use WebView for both card and transfer payments */}
+            {/* <ReactNativeModal
                 isVisible={isCardModalVisible}
                 onBackdropPress={() => {
                     setCardModalVisible(false);
@@ -919,6 +1057,98 @@ setNet(newNet)
                         )}
                     </KeyboardAwareScrollView>
                 </KeyboardAvoidingView>
+            </ReactNativeModal> */}
+
+            {/* WebView Payment Modal */}
+            <ReactNativeModal
+                isVisible={isTransferModalVisible}
+                onBackdropPress={() => setTransferModalVisible(false)}
+                style={styles.transferModalWrapper}
+            >
+                <View style={styles.transferModal}>
+                    <View style={styles.transferModalHeader}>
+                        <Text style={styles.transferModalTitle}>Complete Payment</Text>
+                        <TouchableOpacity 
+                            onPress={() => setTransferModalVisible(false)}
+                            style={styles.closeButton}
+                        >
+                            <Icon name="close" size={24} color="#666" />
+                        </TouchableOpacity>
+                    </View>
+                    
+                    {accessCode && (
+                        <WebView
+                            source={{ uri: `https://checkout.paystack.com/${accessCode}` }}
+                            onNavigationStateChange={handleWebViewNavigationChange}
+                            onMessage={handleWebViewMessage}
+                            onError={handleWebViewError}
+                            onHttpError={handleWebViewError}
+                            startInLoadingState={true}
+                            renderLoading={() => (
+                                <View style={styles.loadingContainer}>
+                                    <ActivityIndicator size="large" color="#1E3A8A" />
+                                    <Text style={styles.loadingText}>Loading payment...</Text>
+                                </View>
+                            )}
+                            style={styles.webView}
+                            javaScriptEnabled={true}
+                            domStorageEnabled={true}
+                            thirdPartyCookiesEnabled={true}
+                            sharedCookiesEnabled={true}
+                            mixedContentMode="compatibility"
+                            allowsInlineMediaPlayback={true}
+                            mediaPlaybackRequiresUserAction={false}
+                            scalesPageToFit={true}
+                            bounces={false}
+                            decelerationRate="normal"
+                            onShouldStartLoadWithRequest={() => {
+                                return true;
+                            }}
+                            injectedJavaScript={`
+                                // Listen for Paystack events
+                                window.addEventListener('message', function(event) {
+                                    window.ReactNativeWebView.postMessage(JSON.stringify(event.data));
+                                });
+                                
+                                // Monitor for page changes that indicate completion
+                                const observer = new MutationObserver(function(mutations) {
+                                    const body = document.body;
+                                    if (body && body.innerText) {
+                                        const text = body.innerText.toLowerCase();
+                                        if (text.includes('transaction successful') || 
+                                            text.includes('payment successful') ||
+                                            text.includes('success') ||
+                                            text.includes('completed') ||
+                                            text.includes('approved')) {
+                                            window.ReactNativeWebView.postMessage(JSON.stringify({
+                                                type: 'payment.success',
+                                                message: 'Payment completed successfully'
+                                            }));
+                                        } else if (text.includes('failed') || 
+                                                   text.includes('declined') ||
+                                                   text.includes('error') ||
+                                                   text.includes('cancelled')) {
+                                            window.ReactNativeWebView.postMessage(JSON.stringify({
+                                                type: 'payment.failed',
+                                                message: 'Payment failed'
+                                            }));
+                                        }
+                                    }
+                                });
+                                
+                                if (document.body) {
+                                    observer.observe(document.body, { childList: true, subtree: true });
+                                } else {
+                                    document.addEventListener('DOMContentLoaded', function() {
+                                        observer.observe(document.body, { childList: true, subtree: true });
+                                    });
+                                }
+                                
+                                true; // Required for injected JavaScript
+                            `}
+                        />
+                    )}
+                </View>
             </ReactNativeModal>
         </ScrollView>
     );
@@ -1195,22 +1425,28 @@ const styles = StyleSheet.create({
     },
     networkRow: {
         flexDirection: "row",
-        flexWrap: "wrap",
-        gap: 1,
+        justifyContent: "space-between",
         marginBottom: 16,
     },
     networkButton: {
-        marginRight: 10,
         borderRadius: 15,
         borderColor: "transparent",
-        width: Platform.OS === 'android' ? 65 : 80,
+        flex: 1,
+        marginHorizontal: 4,
         backgroundColor: "transparent",
     },
     networkIcon: {
-        width: Platform.OS === 'android' ? 20 : 24,
-        height: Platform.OS === 'android' ? 20 : 24,
-        marginLeft: -27,
+        width: 20,
+        height: 20,
+        marginLeft: -22,
         borderRadius: 5,
+    },
+    networkSkeleton: {
+        flex: 1,
+        height: 60,
+        backgroundColor: '#f0f0f0',
+        borderRadius: 15,
+        marginHorizontal: 4,
     },
     radioRow: {
         flexDirection: "row",
@@ -1343,5 +1579,47 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontFamily: "InstrumentSansBold",
         fontSize: 16
-    }
+    },
+    transferModalWrapper: {
+        justifyContent: 'center',
+        margin: 0,
+    },
+    transferModal: {
+        backgroundColor: '#fff',
+        margin: 20,
+        borderRadius: 20,
+        height: '80%',
+        overflow: 'hidden',
+    },
+    transferModalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E5E5',
+    },
+    transferModalTitle: {
+        fontSize: 18,
+        fontFamily: "InstrumentSansBold",
+        color: '#353535',
+    },
+    closeButton: {
+        padding: 8,
+    },
+    webView: {
+        flex: 1,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+    },
+    // loadingText: {
+    //     marginTop: 10,
+    //     fontSize: 16,
+    //     color: '#666',
+    //     fontFamily: "InstrumentSans",
+    // }
 });

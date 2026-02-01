@@ -1,26 +1,101 @@
 import { TransactionLoader } from '@/components/loaders/TransactionLoader'; // Import the loader component
-import { Transaction, useFetchTransactions, UseFetchTransactionsParams } from '@/services/queries/transactions';
+import { Transaction, useFetchTransactions, UseFetchTransactionsParams, useFetchTransactionSummary } from '@/services/queries/transactions';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Animated, Dimensions, Modal, Platform, RefreshControl, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { PieChart } from 'react-native-chart-kit';
 import { Appbar, Button, Chip, Provider as PaperProvider, Text } from 'react-native-paper';
+import Svg, { Path } from 'react-native-svg';
 
 const screenWidth = Dimensions.get('window').width;
+
+const AirtimeIcon = () => (
+  <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+    <Path d="M16 22.75H8C4.56 22.75 2.25 20.44 2.25 17V7C2.25 3.56 4.56 1.25 8 1.25H12.93C14.47 1.25 15.91 1.85 17 2.93L20.07 6C21.16 7.09 21.75 8.53 21.75 10.07V17C21.75 20.44 19.44 22.75 16 22.75ZM8 2.75C5.42 2.75 3.75 4.42 3.75 7V17C3.75 19.58 5.42 21.25 8 21.25H16C18.58 21.25 20.25 19.58 20.25 17V10.07C20.25 8.94 19.81 7.87 19 7.06L15.93 4C15.13 3.2 14.06 2.75 12.92 2.75H8Z" fill="#959595" />
+    <Path d="M14 19.25H10C7.93 19.25 6.25 17.57 6.25 15.5V12.5C6.25 10.43 7.93 8.75 10 8.75H14C16.07 8.75 17.75 10.43 17.75 12.5V15.5C17.75 17.57 16.07 19.25 14 19.25ZM10 10.25C8.76 10.25 7.75 11.26 7.75 12.5V15.5C7.75 16.74 8.76 17.75 10 17.75H14C15.24 17.75 16.25 16.74 16.25 15.5V12.5C16.25 11.26 15.24 10.25 14 10.25H10Z" fill="#959595" />
+    <Path d="M12 19.25C11.59 19.25 11.25 18.91 11.25 18.5V9.5C11.25 9.09 11.59 8.75 12 8.75C12.41 8.75 12.75 9.09 12.75 9.5V18.5C12.75 18.91 12.41 19.25 12 19.25Z" fill="#959595" />
+    <Path d="M16.5 14.75H7.5C7.09 14.75 6.75 14.41 6.75 14C6.75 13.59 7.09 13.25 7.5 13.25H16.5C16.91 13.25 17.25 13.59 17.25 14C17.25 14.41 16.91 14.75 16.5 14.75Z" fill="#959595" />
+  </Svg>
+);
 
 const Transactions = () => {
   const router = useRouter();
   const chartHeight = useMemo(() => new Animated.Value(180), []);
   const modalTranslateY = useMemo(() => new Animated.Value(0), []);
   const modalOpacity = useMemo(() => new Animated.Value(0), []);
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [filterVisible, setFilterVisible] = useState(false);
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [selectedType, setSelectedType] = useState('All');
   const [selectedPeriod, setSelectedPeriod] = useState('All time');
   const [selectedBiller, setSelectedBiller] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState<'All' | 'PENDING' | 'SUCCESS' | 'FAILED'>('All');
   const [referenceNumber, setReferenceNumber] = useState('');
+  
+  // Date range state for summary
+  const [summaryDateRange, setSummaryDateRange] = useState<{period: string, start_date?: string, end_date?: string}>({
+    period: 'This Month',
+    start_date: undefined,
+    end_date: undefined
+  });
+
+  // Function to calculate date ranges
+  const calculateDateRange = (period: string) => {
+    const now = new Date();
+    let startDate: Date;
+    let endDate: Date = new Date(now);
+
+    switch (period) {
+      case 'This Week':
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        startOfWeek.setHours(0, 0, 0, 0);
+        startDate = startOfWeek;
+        endDate = new Date(now);
+        break;
+        
+      case 'Last Week':
+        const lastWeekEnd = new Date(now);
+        lastWeekEnd.setDate(now.getDate() - now.getDay() - 1);
+        lastWeekEnd.setHours(23, 59, 59, 999);
+        const lastWeekStart = new Date(lastWeekEnd);
+        lastWeekStart.setDate(lastWeekEnd.getDate() - 6);
+        lastWeekStart.setHours(0, 0, 0, 0);
+        startDate = lastWeekStart;
+        endDate = lastWeekEnd;
+        break;
+        
+      case 'This Month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        break;
+        
+      case 'Last Month':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+        break;
+        
+      case 'This Year':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+        break;
+        
+      default:
+        return { period, start_date: undefined, end_date: undefined };
+    }
+
+    // Format dates as required: "Wed Dec 31 2025"
+    const formatDate = (date: Date) => {
+      return date.toString().split(' ').slice(0, 4).join(' ');
+    };
+
+    return {
+      period,
+      start_date: formatDate(startDate),
+      end_date: formatDate(endDate)
+    };
+  };
 
   // Applied filter states (only updated when Apply is clicked)
   const [appliedType, setAppliedType] = useState('All');
@@ -121,6 +196,11 @@ const Transactions = () => {
   }, [appliedType, appliedPeriod, appliedBiller, appliedStatus, appliedReference, currentPage, itemsPerPage, refreshKey]);
 
   const { transactions: trx, loading } = useFetchTransactions(filterParams);
+  const { summary, loading: summaryLoading, error: summaryError, refetch: refetchSummary } = useFetchTransactionSummary({
+    start_date: summaryDateRange.start_date,
+    end_date: summaryDateRange.end_date
+  });
+  // Don't initialize date range on component mount - let it load without date filters initially
 
   // Handle pagination data accumulation
   useEffect(() => {
@@ -426,29 +506,31 @@ const Transactions = () => {
 
       <View style={[styles.card, { elevation: 0 }]}>
         {!isCollapsed && (
-          <Button
-            mode="outlined"
-            textColor='#000'
-            labelStyle={{ fontSize: 14, fontFamily: 'InstrumentSansSemiBold' }}
-            compact
-            style={{
-              alignSelf: 'flex-start',
-              marginBottom: 8,
-              borderRadius: 12,
-              borderColor: '#94BDFF',
-              flexDirection: 'row',
-              alignItems: 'center',
-            }}
-            icon="chevron-down"
-            contentStyle={{ flexDirection: 'row-reverse' }}
-          >
-            {selectedPeriod === 'All time' ? 'This Month' : selectedPeriod}
-          </Button>
+          <TouchableOpacity onPress={() => setDatePickerVisible(true)}>
+            <Button
+              mode="outlined"
+              textColor='#000'
+              labelStyle={{ fontSize: 14, fontFamily: 'InstrumentSansSemiBold' }}
+              compact
+              style={{
+                alignSelf: 'flex-start',
+                marginBottom: 8,
+                borderRadius: 12,
+                borderColor: '#94BDFF',
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}
+              icon="chevron-down"
+              contentStyle={{ flexDirection: 'row-reverse' }}
+            >
+              {summaryDateRange.period}
+            </Button>
+          </TouchableOpacity>
         )}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <View>
             <Text variant="titleLarge" style={styles.titleLarge}>
-              ₦{totalSpending.toLocaleString()}
+              ₦{summary ? summary.grand_total_amount.toLocaleString() : totalSpending.toLocaleString()}
             </Text>
             <Text variant="labelSmall" style={styles.labelSmall}>
               Total Spending {selectedPeriod !== 'All time' ? `(${selectedPeriod})` : ''}
@@ -480,33 +562,57 @@ const Transactions = () => {
         </View>
 
         <Animated.View style={{ height: chartHeight, overflow: 'hidden', flexDirection: 'row', alignItems: 'center', }}>
-          {totalSpending > 0 ? (
+          {summary && summary.summary.length > 0 ? (
             <>
               <PieChart
                 hasLegend={false}
-                data={chartData.map(d => ({ ...d, population: d.amount }))}
+                data={summary.summary.map((item, index) => ({
+                  name: item.category,
+                  amount: item.total_amount,
+                  population: item.total_amount,
+                  color: ['#00C49F', '#FFBB28', '#0088FE', '#FF8042'][index % 4],
+                  legendFontColor: '#000',
+                  legendFontSize: 12
+                }))}
                 width={(screenWidth + 80) / 2}
-                height={180}
+                height={summary.summary.length <= 3 ? 180 : 250}
                 chartConfig={{
                   color: () => '#000',
                 }}
                 accessor="population"
                 backgroundColor="transparent"
-                paddingLeft={Platform.OS === 'ios' ? '10' : '15'}
+                paddingLeft={Platform.OS === 'ios' ? '25' : '30'}
                 absolute
               />
-              <View style={{ flex: 1, }}>
-                {chartData.map((item:any, index) => (
+              <View style={{ flex: 1 }}>
+                {summary.summary.map((item, index) => (
                   <View key={index} style={[styles.legendItem, { flexDirection: 'row', alignItems: 'center', marginBottom: 8 }]}>
-                    <View style={[styles.legendColor, { backgroundColor: item.color }]} />
+                    <View style={[styles.legendColor, { backgroundColor: ['#00C49F', '#FFBB28', '#0088FE', '#FF8042'][index % 4] }]} />
                     <View>
-                      <Text style={styles.legendText}>{`₦${item.amount.toLocaleString()}`}</Text>
-                      <Text style={styles.legendText2}>{item.name}</Text>
+                      <Text style={styles.legendText}>{`₦${item.total_amount.toLocaleString()}`}</Text>
+                      <Text style={styles.legendText2}>{item.category}</Text>
                     </View>
                   </View>
                 ))}
               </View>
             </>
+          ) : summaryLoading ? (
+            <View style={styles.chartSkeletonContainer}>
+              <View style={styles.chartSkeleton}>
+                <View style={styles.skeletonCircle} />
+              </View>
+              <View style={styles.legendSkeleton}>
+                {[1, 2, 3].map((item) => (
+                  <View key={item} style={styles.legendItemSkeleton}>
+                    <View style={styles.skeletonDot} />
+                    <View style={{ marginLeft: 8 }}>
+                      <View style={styles.skeletonText} />
+                      <View style={[styles.skeletonText, { width: 60, marginTop: 4 }]} />
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
           ) : (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ color: '#757575', fontSize: 16, fontFamily: 'InstrumentSans' }}>
@@ -583,7 +689,13 @@ const Transactions = () => {
               onPress={() => router.push(`/explore/${encodeURIComponent(item.id)}?title=${encodeURIComponent(item.title)}&status=${encodeURIComponent(item.status)}&description=${encodeURIComponent(item.description)}&network=${encodeURIComponent(item.network)}&amount=${encodeURIComponent(item.amount)}&date=${encodeURIComponent(item.date)}&icon=${encodeURIComponent(item.icon)}&reference=${encodeURIComponent(item.reference)}`)}
             >
               <View style={styles.transaction}>
-                <Ionicons name={item.icon} size={25} color="#959595" />
+                <View style={styles.transactionIcon}>
+                  {item.type === 'AIRTIME' ? (
+                    <AirtimeIcon />
+                  ) : (
+                    <Ionicons name={item.icon} size={25} color="#959595" />
+                  )}
+                </View>
                 <View style={styles.transContent}>
                   <View style={styles.transTop}>
                     <Text style={styles.transTitle}>{item.title}</Text>
@@ -623,6 +735,43 @@ const Transactions = () => {
           {loading ? `Loading...` : `Show ${itemsPerPage} More`}
         </Button>
       )}
+
+      {/* Date Picker Modal */}
+      <Modal visible={datePickerVisible} animationType="slide" transparent>
+        <View style={styles.dateModalContainer}>
+          <View style={styles.dateModalContent}>
+            <View style={styles.dateModalHeader}>
+              <Text style={styles.dateModalTitle}>Select Time Period</Text>
+              <TouchableOpacity onPress={() => setDatePickerVisible(false)} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.dateOptions}>
+              {['This Week', 'Last Week', 'This Month', 'Last Month', 'This Year'].map((period) => (
+                <TouchableOpacity
+                  key={period}
+                  style={[
+                    styles.dateOption,
+                    summaryDateRange.period === period && styles.dateOptionSelected
+                  ]}
+                  onPress={() => {
+                    setSummaryDateRange(calculateDateRange(period));
+                    setDatePickerVisible(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.dateOptionText,
+                    summaryDateRange.period === period && styles.dateOptionTextSelected
+                  ]}>
+                    {period}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={filterVisible} animationType="none" transparent>
         {/* <TouchableWithoutFeedback onPress={closeFilterModal}> */}
@@ -782,6 +931,9 @@ const Transactions = () => {
           </Animated.View>
         {/* </TouchableWithoutFeedback> */}
       </Modal>
+      
+      {/* Extra bottom spacing */}
+      <View style={{ height: 60 }} />
       </ScrollView>
     </View>
   );
@@ -890,6 +1042,12 @@ const styles = StyleSheet.create({
     marginBottom: 35,
     alignItems: 'center',
     gap: 10,
+  },
+  transactionIcon: {
+    width: 25,
+    height: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   transContent: {
     flex: 1,
@@ -1065,5 +1223,91 @@ const styles = StyleSheet.create({
   resetButtonText: {
     fontSize: 14,
     fontFamily: 'InstrumentSansSemiBold',
+  },
+  dateModalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  dateModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    margin: 20,
+    maxWidth: 300,
+    width: '100%',
+  },
+  dateModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  dateModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    fontFamily: 'InstrumentSansSemiBold',
+    flex: 1,
+  },
+  dateOptions: {
+    gap: 12,
+  },
+  dateOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: '#F5F5F5',
+  },
+  dateOptionSelected: {
+    backgroundColor: '#1E3A8A',
+  },
+  dateOptionText: {
+    fontSize: 16,
+    color: '#333',
+    fontFamily: 'InstrumentSans',
+    textAlign: 'center',
+  },
+  dateOptionTextSelected: {
+    color: '#fff',
+    fontFamily: 'InstrumentSansSemiBold',
+  },
+  chartSkeletonContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 180,
+  },
+  chartSkeleton: {
+    width: (screenWidth + 80) / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  skeletonCircle: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: '#E5E5E5',
+  },
+  legendSkeleton: {
+    flex: 1,
+    paddingLeft: 20,
+  },
+  legendItemSkeleton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  skeletonDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#E5E5E5',
+  },
+  skeletonText: {
+    width: 80,
+    height: 14,
+    borderRadius: 4,
+    backgroundColor: '#E5E5E5',
   },
 });

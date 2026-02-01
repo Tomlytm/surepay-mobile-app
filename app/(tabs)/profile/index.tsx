@@ -38,12 +38,12 @@ const ProfileScreen = () => {
             icon: 'person-outline',
             onPress: () => router.push('/(tabs)/profile/personalInfo'),
         },
-        {
-            id: 2,
-            title: 'Business Information',
-            icon: 'briefcase-outline',
-            onPress: () => console.log('Business Information pressed'),
-        },
+        // {
+        //     id: 2,
+        //     title: 'Business Information',
+        //     icon: 'briefcase-outline',
+        //     onPress: () => console.log('Business Information pressed'),
+        // },
         {
             id: 3,
             title: 'Account Settings',
@@ -56,25 +56,25 @@ const ProfileScreen = () => {
             icon: 'card-outline',
             onPress: () => console.log('Payment Methods pressed'),
         },
-        {
-            id: 5,
-            title: 'Legals',
-            icon: 'shield-outline',
-            onPress: () => console.log('Legals pressed'),
-        },
-        {
-            id: 6,
-            title: 'Rate this app',
-            icon: 'star-outline',
-            isExternal: true,
-            onPress: () => console.log('Rate this app pressed'),
-        },
-        {
-            id: 7,
-            title: 'Help & Support',
-            icon: 'chatbubble-outline',
-            onPress: () => console.log('Help & Support pressed'),
-        },
+        // {
+        //     id: 5,
+        //     title: 'Legals',
+        //     icon: 'shield-outline',
+        //     onPress: () => console.log('Legals pressed'),
+        // },
+        // {
+        //     id: 6,
+        //     title: 'Rate this app',
+        //     icon: 'star-outline',
+        //     isExternal: true,
+        //     onPress: () => console.log('Rate this app pressed'),
+        // },
+        // {
+        //     id: 7,
+        //     title: 'Help & Support',
+        //     icon: 'chatbubble-outline',
+        //     onPress: () => console.log('Help & Support pressed'),
+        // },
     ];
 
     return (
@@ -97,7 +97,7 @@ const ProfileScreen = () => {
                 </View>
 
                 {/* Balance Section */}
-                <View style={styles.balanceCard}>
+                {/* <View style={styles.balanceCard}>
                     <View style={styles.balanceInfo}>
                         <Text style={styles.balanceAmount}>₦6,000</Text>
                         <Text style={styles.balanceLabel}>Earned Commission</Text>
@@ -105,7 +105,7 @@ const ProfileScreen = () => {
                     <TouchableOpacity style={styles.withdrawButton}>
                         <Text style={styles.withdrawButtonText}>Withdraw</Text>
                     </TouchableOpacity>
-                </View>
+                </View> */}
 
                 {/* Menu Items */}
                 <View style={styles.menuContainer}>
